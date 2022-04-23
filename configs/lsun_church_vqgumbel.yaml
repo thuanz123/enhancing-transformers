@@ -34,7 +34,7 @@ dataset:
     target: enhancing.dataloader.DataModuleFromConfig
     params:
         batch_size: 4
-        num_workers: 2
+        num_workers: 0
         train:
             target: enhancing.dataloader.lsun.LSUNTrain
             params:
