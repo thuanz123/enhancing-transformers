@@ -32,9 +32,6 @@
 
 This is an unofficial implementation of both [ViT-VQGAN](https://arxiv.org/abs/2110.04627) and [RQ-VAE](https://arxiv.org/abs/2110.04627) in Pytorch. ViT-VQGAN is a simple ViT-based Vector Quantized AutoEncoder while RQ-VAE propose a new residual qunatization scheme.Further details can be viewed in the papers
 
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-
 <!-- GETTING STARTED -->
 ## Getting Started
 
@@ -47,20 +44,12 @@ A suitable conda environment named `enhancing` can be created and activated with
       conda activate enhancing
    ```
 
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-
-
 <!-- USAGE EXAMPLES -->
-## Usage
+## Training
 
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
-
-_For more examples, please refer to the [Documentation](https://example.com)_
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-
+Training is easy with one line:
+   ```python3 main.py -c config_name -lr learning_rate -e epoch_nums
+   ```
 
 <!-- ROADMAP -->
 ## Roadmap
@@ -75,9 +64,6 @@ _For more examples, please refer to the [Documentation](https://example.com)_
     - [ ] COCO
     - [ ] CC3M
 - [ ] Add pretrained models 
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
 
 
 <!-- CONTRIBUTING -->
@@ -94,26 +80,17 @@ Don't forget to give the project a star! Thanks again!
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-
 
 <!-- LICENSE -->
 ## License
 
 Distributed under the MIT License. See `LICENSE` for more information.
 
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-
 
 <!-- CONTACT -->
 ## Contact
 
 Thuan H. Nguyen - [@leejohnthuan](https://twitter.com/leejohnthuan) - thuan@goback.world
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
 
 
 <!-- ACKNOWLEDGMENTS -->
@@ -124,8 +101,6 @@ This repo is heavily inspired by following repos and papers:
 * [Taming Transformers](https://github.com/CompVis/taming-transformers)
 * [ViT-Pytorch](https://github.com/lucidrains/vit-pytorch)
 * [minDALL-E](https://github.com/kakaobrain/minDALL-E)
-* [CLIP]()
+* [CLIP](https://github.com/openai/CLIP)
 * [ViT-VQGAN](https://arxiv.org/abs/2110.04627)
 * [RQ-VAE](https://arxiv.org/abs/2110.04627)
-
-<p align="right">(<a href="#top">back to top</a>)</p>
