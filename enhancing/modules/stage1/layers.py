@@ -87,8 +87,7 @@ class Transformer(nn.Module):
 
 class Encoder(nn.Module):
     def __init__(self, image_size: Union[Tuple[int, int], int], patch_size: Union[Tuple[int, int], int],
-                 dim: int, depth: int, heads: int, mlp_dim: int, tokenlearner_num: int = 8,
-                 channels: int = 3, dim_head: int = 64) -> None:
+                 dim: int, depth: int, heads: int, mlp_dim: int, channels: int = 3, dim_head: int = 64) -> None:
         super().__init__()
         image_height, image_width = image_size if isinstance(image_size, tuple) \
                                     else (image_size, image_size)
@@ -116,8 +115,7 @@ class Encoder(nn.Module):
 
 class Decoder(nn.Module):
     def __init__(self, image_size: Union[Tuple[int, int], int], patch_size: Union[Tuple[int, int], int],
-                 dim: int, depth: int, heads: int, mlp_dim: int, tokenlearner_num: int = 8,
-                 channels: int = 3, dim_head: int = 64) -> None:
+                 dim: int, depth: int, heads: int, mlp_dim: int, channels: int = 3, dim_head: int = 64) -> None:
         super().__init__()
         image_height, image_width = image_size if isinstance(image_size, tuple) \
                                     else (image_size, image_size)
