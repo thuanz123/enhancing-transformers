@@ -40,7 +40,7 @@ For the ease of installation, you should use [anaconda](https://conda.io/) to se
 ### Installation
 
 A suitable conda environment named `enhancing` can be created and activated with:
-   ```conda env create -f environment.yaml
+   ```conda env create -f environment.yaml  
       conda activate enhancing
    ```
 
@@ -48,8 +48,7 @@ A suitable conda environment named `enhancing` can be created and activated with
 ## Training
 
 Training is easy with one line:
-   ```python3 main.py -c config_name -lr learning_rate -e epoch_nums
-   ```
+   ```python3 main.py -c config_name -lr learning_rate -e epoch_nums```
 
 <!-- ROADMAP -->
 ## Roadmap
