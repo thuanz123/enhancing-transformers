@@ -17,8 +17,6 @@ model:
             depth: 12
             heads: 12
             mlp_dim: 3072
-            tokenlearner_loc: 6
-            boosting: True
         qparams:
             embed_dim: 256
             n_embed: 16384
