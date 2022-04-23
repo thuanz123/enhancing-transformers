@@ -11,7 +11,7 @@ from pathlib import Path
 from omegaconf import OmegaConf
 import pytorch_lightning as pl
 
-from boosting.utils.general import get_config_from_file, initialize_from_config, setup_callbacks
+from enhancing.utils.general import get_config_from_file, initialize_from_config, setup_callbacks
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
