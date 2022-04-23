@@ -12,11 +12,10 @@
     <li>
       <a href="#getting-started">Getting Started</a>
       <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
         <li><a href="#installation">Installation</a></li>
+        <li><a href="#training">Training</a></li>
       </ul>
     </li>
-    <li><a href="#usage">Usage</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
     <li><a href="#contributing">Contributing</a></li>
     <li><a href="#license">License</a></li>
@@ -46,7 +45,7 @@ conda activate enhancing
 ```
 
 <!-- USAGE EXAMPLES -->
-## Training
+### Training
 
 Training is easy with one line:
    ```python3 main.py -c config_name -lr learning_rate -e epoch_nums```
