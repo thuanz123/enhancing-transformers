@@ -1,15 +1,7 @@
 model:
-    target: enhancing.modules.stage1.vitvqgan.ViTVQGumbel
+    target: enhancing.modules.stage1.vitvqgan.ViTVQ
     params:
         image_key: image
-        temperature_scheduler:
-            target: enhancing.utils.callback.LambdaWarmUpCosineScheduler
-            params:
-                warm_up_steps: 1000
-                min_: 0.16
-                max_: 1
-                start: 0.9
-                max_decay_steps: 100000
         hparams:
             image_size: 256
             patch_size: 16
@@ -20,8 +12,6 @@ model:
         qparams:
             embed_dim: 256
             n_embed: 16384
-            use_residual: True
-            num_quantizers: 4
         loss:
             target: enhancing.losses.vqperceptual.VQLPIPSWithDiscriminator
             params:
