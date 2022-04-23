@@ -110,7 +110,7 @@ class GumbelQuantizer(BaseQuantizer):
         self.embedding = nn.Embedding(self.n_embed, self.embed_dim)
         self.embedding.weight.data.uniform_(-1.0 / self.n_embed, 1.0 / self.n_embed)
         
-    def quantize(self, z, temp=None) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.LongTensor]:
+    def quantize(self, z: torch.FloatTensor, temp: Optional[float] = None) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.LongTensor]:
         # force hard = True when we are in eval mode, as we must quantize
         hard = not self.training
         temp = self.temperature if temp is None else temp
