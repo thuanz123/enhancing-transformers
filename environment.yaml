@@ -1,0 +1,21 @@
+name: enhancing
+channels:
+  - pytorch
+  - defaults
+dependencies:
+  - python=3.8.5
+  - pip=20.3
+  - cudatoolkit=10.2
+  - pytorch=1.7.1
+  - torchvision=0.8.2
+  - numpy=1.19.2
+  - pip:
+    - ftfy==6.1.1
+    - lpips==0.1.4
+    - regex==2021.10.8
+    - pytorch-lightning==1.0.8
+    - einops==0.3.0
+    - omegaconf==2.0.0
+    - lmdb==1.0.0
+    - tensorboard==2.8.0
+    - git+https://github.com/openai/CLIP.git

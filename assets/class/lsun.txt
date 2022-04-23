@@ -1,0 +1,11 @@
+bedroom
+bridge
+church_outdoor
+classroom
+conference_room
+dining_room
+kitchen
+living_room
+restaurant
+test
+tower
