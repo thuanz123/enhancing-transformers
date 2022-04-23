@@ -54,6 +54,7 @@ Training is easy with one line:
 ## Roadmap
 
 - [x] Add ViT-VQGAN
+    - [x] Add ViT-based encoder and decoder
     - [x] Add factorized codes
     - [x] Add l<sub>2</sub>-normalized codes
 - [x] Add RQ-VAE
