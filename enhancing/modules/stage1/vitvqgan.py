@@ -84,7 +84,7 @@ class ViTVQ(pl.LightningModule):
         quant = self.quantizer.norm(quant)
         
         if self.quantizer.use_residual:
-            quant = quant.sum(-2)    
+            quant = quant.sum(-2)  
             
         dec = self.decode(quant)
         
