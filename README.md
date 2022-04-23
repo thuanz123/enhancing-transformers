@@ -30,7 +30,7 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-This is an unofficial implementation of both [ViT-VQGAN](https://arxiv.org/abs/2110.04627) and [RQ-VAE](https://arxiv.org/abs/2110.04627) in Pytorch. ViT-VQGAN is a simple ViT-based Vector Quantized AutoEncoder while RQ-VAE propose a new residual qunatization scheme.Further details can be viewed in the papers
+This is an unofficial implementation of both [ViT-VQGAN](https://arxiv.org/abs/2110.04627) and [RQ-VAE](https://arxiv.org/abs/2110.04627) in Pytorch. ViT-VQGAN is a simple ViT-based Vector Quantized AutoEncoder while RQ-VAE propose a new residual quantization scheme. Further details can be viewed in the papers
 
 <!-- GETTING STARTED -->
 ## Getting Started
@@ -40,9 +40,10 @@ For the ease of installation, you should use [anaconda](https://conda.io/) to se
 ### Installation
 
 A suitable conda environment named `enhancing` can be created and activated with:
-   ```conda env create -f environment.yaml  
-      conda activate enhancing
-   ```
+```
+conda env create -f environment.yaml
+conda activate enhancing
+```
 
 <!-- USAGE EXAMPLES -->
 ## Training
