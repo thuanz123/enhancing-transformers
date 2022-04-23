@@ -21,7 +21,7 @@ class BaseQuantizer(nn.Module):
     def __init__(self, straight_through: bool = True, use_norm: bool = True) -> None:
         super().__init__()
         self.straight_through = straight_through
-        self.norm = lambda x: F.normalize(x, dim=2) if use_norm else nn.Identity()
+        self.norm = F.normalize if use_norm else nn.Identity()
         
     def quantize(self, z: torch.FloatTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.LongTensor]:
         pass
@@ -70,7 +70,7 @@ class VectorQuantizer(BaseQuantizer):
         self.embedding.weight.data.uniform_(-1.0 / self.n_embed, 1.0 / self.n_embed)
 
     def quantize(self, z: torch.FloatTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.LongTensor]:
-        z_reshaped_norm = self.norm(z.view(-1, self.embed_dim))
+        z_reshaped_norm = self.norm(z).view(-1, self.embed_dim)
         embedding_norm = self.norm(self.embedding.weight)
         
         d = torch.sum(z_reshaped_norm ** 2, dim=1, keepdim=True) + \
@@ -81,7 +81,7 @@ class VectorQuantizer(BaseQuantizer):
         encoding_indices = encoding_indices.view(*z.shape[:2])
         
         z_q = self.embedding(encoding_indices).view(z.shape)
-        z_qnorm, z_norm = self.norm(z_q), self.norm(z)
+        z_qnorm, z_norm = self.norm(z_q, dim=2), self.norm(z, dim=2)
         
         # compute loss for embedding
         loss = torch.mean((z_qnorm.detach()-z_norm)**2) +  \

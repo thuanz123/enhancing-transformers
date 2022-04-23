@@ -77,7 +77,7 @@ class ViTVQ(pl.LightningModule):
         h = self.pre_quant(h)
         _, _, codes = self.quantizer(h)
         
-        return codes.contiguous()
+        return codes
 
     def decode_codes(self, code: torch.LongTensor) -> torch.FloatTensor:
         quant = self.quantizer.embedding(code)

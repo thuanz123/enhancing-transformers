@@ -135,7 +135,7 @@ class Decoder(nn.Module):
         ]))
                                       
     def forward(self, token: torch.FloatTensor) -> torch.FloatTensor:
-        x = self.transformer(x)
+        x = self.transformer(token)
         x += self.pos_embedding
 
         return self.to_pixel(x)
