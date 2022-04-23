@@ -98,7 +98,6 @@ class GumbelQuantizer(BaseQuantizer):
         self.embed_dim = embed_dim
         self.n_embed = n_embed
 
-        self.straight_through = straight_through
         self.temperature = temp_init
         self.kl_weight = kl_weight
         
