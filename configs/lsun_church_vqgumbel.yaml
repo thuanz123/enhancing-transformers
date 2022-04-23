@@ -3,7 +3,7 @@ model:
     params:
         image_key: image
         temperature_scheduler:
-            target: boosting.utils.callback.LambdaWarmUpCosineScheduler
+            target: enhancing.utils.callback.LambdaWarmUpCosineScheduler
             params:
                 warm_up_steps: 1000
                 min_: 0.16
