@@ -81,8 +81,10 @@ class ViTVQ(pl.LightningModule):
 
     def decode_codes(self, code: torch.LongTensor) -> torch.FloatTensor:
         quant = self.quantizer.embedding(code)
+        quant = self.quantizer.norm(quant)
+        
         if self.quantizer.use_residual:
-            quant = quant.sum(-2)
+            quant = quant.sum(-2)    
             
         dec = self.decode(quant)
         

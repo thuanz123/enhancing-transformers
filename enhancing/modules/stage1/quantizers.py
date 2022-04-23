@@ -21,7 +21,7 @@ class BaseQuantizer(nn.Module):
     def __init__(self, straight_through: bool = True, use_norm: bool = True) -> None:
         super().__init__()
         self.straight_through = straight_through
-        self.norm = F.normalize if use_norm else nn.Identity()
+        self.norm = lambda x: F.normalize(x, dim=-1) if use_norm else x
         
     def quantize(self, z: torch.FloatTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.LongTensor]:
         pass
@@ -55,9 +55,9 @@ class BaseQuantizer(nn.Module):
 
 
 class VectorQuantizer(BaseQuantizer):
-    def __init__(self, embed_dim: int, n_embed: int, beta: float = 0.25, 
+    def __init__(self, embed_dim: int, n_embed: int, beta: float = 0.25, use_norm: bool = True,
                  use_residual: bool = False, num_quantizers: Optional[int] = None, **kwargs) -> None:
-        super().__init__()
+        super().__init__(use_norm=use_norm)
         self.n_embed = n_embed
         self.embed_dim = embed_dim
 
@@ -70,7 +70,7 @@ class VectorQuantizer(BaseQuantizer):
         self.embedding.weight.data.uniform_(-1.0 / self.n_embed, 1.0 / self.n_embed)
 
     def quantize(self, z: torch.FloatTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.LongTensor]:
-        z_reshaped_norm = self.norm(z).view(-1, self.embed_dim)
+        z_reshaped_norm = self.norm(z.view(-1, self.embed_dim))
         embedding_norm = self.norm(self.embedding.weight)
         
         d = torch.sum(z_reshaped_norm ** 2, dim=1, keepdim=True) + \
@@ -81,20 +81,19 @@ class VectorQuantizer(BaseQuantizer):
         encoding_indices = encoding_indices.view(*z.shape[:2])
         
         z_q = self.embedding(encoding_indices).view(z.shape)
-        z_qnorm, z_norm = self.norm(z_q, dim=2), self.norm(z, dim=2)
+        z_qnorm, z_norm = self.norm(z_q), self.norm(z)
         
         # compute loss for embedding
         loss = torch.mean((z_qnorm.detach()-z_norm)**2) +  \
                self.beta * torch.mean((z_qnorm - z_norm.detach())**2)
 
-        return z_q, loss, encoding_indices
+        return z_qnorm, loss, encoding_indices
 
 
 class GumbelQuantizer(BaseQuantizer):
-    def __init__(self, embed_dim: int, n_embed: int, straight_through: bool = False,
-                 temp_init: float = 1.0, kl_weight: float = 5e-4,
-                 use_residual: bool = False, num_quantizers: Optional[int] = None, **kwargs) -> None:
-        super().__init__(straight_through)
+    def __init__(self, embed_dim: int, n_embed: int, temp_init: float = 1.0, kl_weight: float = 5e-4,
+                 use_norm: bool = True, use_residual: bool = False, num_quantizers: Optional[int] = None, **kwargs) -> None:
+        super().__init__(False, use_norm)
         
         self.embed_dim = embed_dim
         self.n_embed = n_embed
@@ -112,8 +111,8 @@ class GumbelQuantizer(BaseQuantizer):
         self.embedding.weight.data.uniform_(-1.0 / self.n_embed, 1.0 / self.n_embed)
         
     def quantize(self, z, temp=None) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.LongTensor]:
-        # force hard = True when we are in eval mode, as we must quantize. actually, always true seems to work
-        hard = self.straight_through if self.training else True
+        # force hard = True when we are in eval mode, as we must quantize
+        hard = not self.training
         temp = self.temperature if temp is None else temp
         
         z_reshaped_norm = self.norm(z.view(-1, self.embed_dim))
@@ -125,8 +124,8 @@ class GumbelQuantizer(BaseQuantizer):
         logits =  logits.view(*z.shape[:2], -1)
 
         soft_one_hot = F.gumbel_softmax(logits, tau=temp, dim=2, hard=hard)
-        z_q = torch.einsum('b t n, n d -> b t d', soft_one_hot, self.embedding.weight)
-
+        z_qnorm = torch.einsum('b t n, n d -> b t d', soft_one_hot, embedding_norm)
+        
         # add kl divergence to the prior loss
         qy = F.softmax(logits, dim=2)
         loss = self.kl_weight * torch.sum(qy * torch.log(qy * self.n_embed + 1e-10), dim=2).mean()
@@ -134,4 +133,4 @@ class GumbelQuantizer(BaseQuantizer):
         # get encoding via argmax
         encoding_indices = soft_one_hot.argmax(dim=2)
         
-        return z_q, loss, encoding_indices
+        return z_qnorm, loss, encoding_indices
