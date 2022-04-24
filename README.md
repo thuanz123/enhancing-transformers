@@ -64,7 +64,9 @@ Training is easy with one line:
     - [x] ImageNet
     - [x] LSUN
     - [ ] COCO
-    - [ ] CC3M
+        - [ ] Add COCO Segemntation
+        - [ ] Add COCO Caption
+    - [x] CC3M
 - [ ] Add pretrained models 
 
 
