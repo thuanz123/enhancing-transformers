@@ -143,15 +143,15 @@ class ViTVQ(pl.LightningModule):
 
     def configure_optimizers(self) -> Tuple[List, List]:
         lr = self.learning_rate
-        opt_ae = torch.optim.Adam(list(self.encoder.parameters())+
+        opt_ae = torch.optim.AdamW(list(self.encoder.parameters())+
                                   list(self.decoder.parameters())+
                                   list(self.pre_quant.parameters())+
                                   list(self.post_quant.parameters())+
                                   list(self.quantizer.parameters()),
-                                  lr=lr, betas=(0.5, 0.9))
+                                  lr=lr, betas=(0.5, 0.9), weight_decay=1e-4)
         
         if hasattr(self.loss, 'discriminator'):
-            opt_disc = torch.optim.Adam(self.loss.discriminator.parameters(), lr=lr, betas=(0.5, 0.9))
+            opt_disc = torch.optim.AdamW(self.loss.discriminator.parameters(), lr=lr, betas=(0.5, 0.9), weight_decay=1e-4)
             
             return [opt_ae, opt_disc], []
         else:

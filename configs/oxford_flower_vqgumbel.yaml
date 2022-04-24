@@ -1,0 +1,48 @@
+model:
+    target: enhancing.modules.stage1.vitvqgan.ViTVQGumbel
+    params:
+        image_key: image
+        temperature_scheduler:
+            target: enhancing.utils.callback.LambdaWarmUpCosineScheduler
+            params:
+                warm_up_steps: 0
+                min_: 0.16
+                max_: 1
+                start: 1
+                max_decay_steps: 15000
+        hparams:
+            image_size: 256
+            patch_size: 32
+            dim: 512
+            depth: 8
+            heads: 8
+            mlp_dim: 2048
+        qparams:
+            embed_dim: 256
+            n_embed: 16384
+            use_residual: True 
+            num_quantizers: 4
+        loss:
+            target: enhancing.losses.vqperceptual.VQLPIPSWithDiscriminator
+            params:
+                disc_start: 18001
+                loglaplace_weight: 0.1
+                loggaussian_weight: 1.0
+                perceptual_weight: 0.1
+
+dataset:
+    target: enhancing.dataloader.DataModuleFromConfig
+    params:
+        batch_size: 8
+        num_workers: 4
+        train:
+            target: enhancing.dataloader.classimage.ClassImageTrain
+            params:
+                root: data
+                resolution: 256
+                
+        validation:
+            target: enhancing.dataloader.classimage.ClassImageValidation
+            params:
+                root: data
+                resolution: 256
