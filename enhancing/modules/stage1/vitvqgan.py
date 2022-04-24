@@ -148,10 +148,10 @@ class ViTVQ(pl.LightningModule):
                                   list(self.pre_quant.parameters())+
                                   list(self.post_quant.parameters())+
                                   list(self.quantizer.parameters()),
-                                  lr=lr, betas=(0.5, 0.9))
+                                  lr=lr, betas=(0.5, 0.9), weight_decay=1e-4)
         
         if hasattr(self.loss, 'discriminator'):
-            opt_disc = torch.optim.Adam(self.loss.discriminator.parameters(), lr=lr, betas=(0.5, 0.9))
+            opt_disc = torch.optim.Adam(self.loss.discriminator.parameters(), lr=lr, betas=(0.5, 0.9), weight_decay=1e-4)
             
             return [opt_ae, opt_disc], []
         else:
