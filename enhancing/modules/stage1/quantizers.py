@@ -91,15 +91,13 @@ class VectorQuantizer(BaseQuantizer):
 
 
 class GumbelQuantizer(BaseQuantizer):
-    def __init__(self, embed_dim: int, n_embed: int, temp_init: float = 1.0, kl_weight: float = 5e-4,
+    def __init__(self, embed_dim: int, n_embed: int, temp_init: float = 1.0
                  use_norm: bool = True, use_residual: bool = False, num_quantizers: Optional[int] = None, **kwargs) -> None:
         super().__init__(False, use_norm)
         
         self.embed_dim = embed_dim
         self.n_embed = n_embed
-
         self.temperature = temp_init
-        self.kl_weight = kl_weight
         
         self.proj = nn.Linear(embed_dim, n_embed, 1)
 
@@ -125,9 +123,9 @@ class GumbelQuantizer(BaseQuantizer):
         soft_one_hot = F.gumbel_softmax(logits, tau=temp, dim=2, hard=hard)
         z_qnorm = torch.einsum('b t n, n d -> b t d', soft_one_hot, embedding_norm)
         
-        # add kl divergence to the prior loss
+        # kl divergence to the prior loss
         qy = F.softmax(logits, dim=2)
-        loss = self.kl_weight * torch.sum(qy * torch.log(qy * self.n_embed + 1e-10), dim=2).mean()
+        loss = torch.sum(qy * torch.log(qy * self.n_embed + 1e-10), dim=2).mean()
 
         # get encoding via argmax
         encoding_indices = soft_one_hot.argmax(dim=2)
