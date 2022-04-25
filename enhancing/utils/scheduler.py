@@ -33,7 +33,7 @@ class FixedScheduler:
 
 
 class ExpontentialDecayScheduler:
-    def __init__(self, end, decay_every_step, scale_factor):
+    def __init__(self, start, end, decay_every_step, scale_factor):
         self.decay_every_step = decay_every_step
         self.scale_factor = scale_factor
 
