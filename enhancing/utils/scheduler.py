@@ -18,6 +18,10 @@ from pytorch_lightning.callbacks import Callback
 
 
 class DummyScheduler:
+    pass
+
+
+class FixedScheduler:
     def __init__(self, val):
         self.val = val
         
