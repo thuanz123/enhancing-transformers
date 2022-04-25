@@ -111,38 +111,3 @@ class ImageLogger(Callback):
                                 outputs: Generic, batch: Tuple[torch.LongTensor, torch.FloatTensor],
                                 batch_idx: int, dataloader_idx: int):
         self.log_img(pl_module, batch, batch_idx, split="val")
-
-
-class DummyScheduler:
-    def schedule(self, n):
-        return n
-
-    def __call__(self, n):
-        return self.schedule(n)
-
-
-class LambdaWarmUpCosineScheduler:
-    def __init__(self, warm_up_steps, min_, max_, start, max_decay_steps):
-        assert (max_decay_steps >= warm_up_steps)
-        
-        self.warm_up_steps = warm_up_steps
-        self.start = start
-        self.min_ = min_
-        self.max_ = max_
-        self.max_decay_steps = max_decay_steps
-        self.last = 0.
-        
-    def schedule(self, n):
-        if n < self.warm_up_steps:
-            res = (self.max_ - self.start) / self.warm_up_steps * n + self.start
-            self.last = res
-            return res
-        else:
-            t = (n - self.warm_up_steps) / (self.max_decay_steps - self.warm_up_steps)
-            t = min(t, 1.0)
-            res = self.min_ + 0.5 * (self.max_ - self.min_) * (1 + np.cos(t * np.pi))
-            self.last = res
-            return res
-
-    def __call__(self, n):
-        return self.schedule(n)
