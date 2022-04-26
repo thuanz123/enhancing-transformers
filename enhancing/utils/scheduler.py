@@ -37,12 +37,13 @@ class ExpontentialDecayScheduler:
         self.decay_every_step = decay_every_step
         self.scale_factor = scale_factor
 
+        self.start = start
         self.end = end
         self.current = start
         
     def schedule(self, n):
-        if not n % decay_ever_step:
-            res = np.exp(-scale_factor*n)
+        if not n % self.decay_every_step:
+            res = np.exp(-self.scale_factor*n) * self.start
             self.current = max(self.end, res)
             
         return self.current
