@@ -123,7 +123,7 @@ class GumbelQuantizer(BaseQuantizer):
         z_qnorm = torch.einsum('b t n, n d -> b t d', soft_one_hot, embedding_norm)
         
         # kl divergence to the prior loss
-        loss = torch.sum(qy * torch.log(qy * self.n_embed + 1e-10), dim=2).mean()
+        loss = torch.sum(probs * torch.log(probs * self.n_embed + 1e-10), dim=2).mean()
                
         # get encoding via argmax
         encoding_indices = soft_one_hot.argmax(dim=2)
