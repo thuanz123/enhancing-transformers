@@ -18,10 +18,14 @@ from ...utils.general import get_obj_from_str, initialize_from_config
 
 
 class BaseQuantizer(nn.Module):
-    def __init__(self, straight_through: bool = True, use_norm: bool = True) -> None:
+    def __init__(self, straight_through: bool = True, use_norm: bool = True,
+                 use_residual: bool = False, num_quantizers: Optional[int] = None) -> None:
         super().__init__()
         self.straight_through = straight_through
         self.norm = lambda x: F.normalize(x, dim=-1) if use_norm else x
+
+        self.use_residual = use_residual
+        self.num_quantizers = num_quantizers
         
     def quantize(self, z: torch.FloatTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.LongTensor]:
         pass
@@ -57,14 +61,10 @@ class BaseQuantizer(nn.Module):
 class VectorQuantizer(BaseQuantizer):
     def __init__(self, embed_dim: int, n_embed: int, beta: float = 0.25, use_norm: bool = True,
                  use_residual: bool = False, num_quantizers: Optional[int] = None, **kwargs) -> None:
-        super().__init__(use_norm=use_norm)
+        super().__init__(True, use_norm, use_residual,, num_quantizers)
         self.n_embed = n_embed
         self.embed_dim = embed_dim
-
         self.beta = beta
-
-        self.use_residual = use_residual
-        self.num_quantizers = num_quantizers
         
         self.embedding = nn.Embedding(self.n_embed, self.embed_dim)
         self.embedding.weight.data.uniform_(-1.0 / self.n_embed, 1.0 / self.n_embed)
@@ -93,15 +93,12 @@ class VectorQuantizer(BaseQuantizer):
 class GumbelQuantizer(BaseQuantizer):
     def __init__(self, embed_dim: int, n_embed: int, temp_init: float = 1.0,
                  use_norm: bool = True, use_residual: bool = False, num_quantizers: Optional[int] = None, **kwargs) -> None:
-        super().__init__(False, use_norm)
+        super().__init__(False, use_norm, use_residual, num_quantizers)
         
         self.embed_dim = embed_dim
         self.n_embed = n_embed
         self.temperature = temp_init
         
-        self.use_residual = use_residual
-        self.num_quantizers = num_quantizers
-
         self.embedding = nn.Embedding(self.n_embed, self.embed_dim)
         self.embedding.weight.data.uniform_(-1.0 / self.n_embed, 1.0 / self.n_embed)
         
