@@ -9,13 +9,11 @@
 
 from typing import Optional, Union, Callable, Tuple, Any
 from pathlib import Path
-from random import randint, choice
 from omegaconf import OmegaConf
-import PIL
+from PIL import Image
+import albumentations
 
-import torch
 from torch.utils.data import Dataset
-from torchvision import transforms as T
 
 from ..utils.general import initialize_from_config
 
@@ -30,57 +28,46 @@ class CC3MBase(Dataset):
             self.items.append((Path(folder)/imgpath, text))
 
         self.tokenizer = initialize_from_config(tokenizer)
-        self.image_transform = transform
+        self.transform = transform
 
     def __len__(self) -> int:
         return len(self.keys)
 
-    def random_sample(self) -> Tuple[Any, Any]:
-        return self.__getitem__(randint(0, self.__len__() - 1))
-
-    def sequential_sample(self, ind: int) -> Tuple[Any, Any]:
-        if ind >= self.__len__() - 1:
-            return self.__getitem__(0)
-        return self.__getitem__(ind + 1)
-
-    def skip_sample(self, ind: int) -> Tuple[Any, Any]:
-        return self.sequential_sample(ind=ind)
-
     def __getitem__(self, ind: int) -> Tuple[Any, Any]:
-        image_file, text_file = self.items[ind]
+        image_file, caption = self.items[ind]
                 
-        tokenized_text = self.tokenizer.tokenize(description).squeeze(0)
-        image_tensor = Image.open(imgpath).convert('RGB')
+        caption = self.tokenizer.tokenize(caption).squeeze(0)
+
+        image = Image.open(image_file).convert('RGB')
+        image = np.array(image).astype(np.uint8)
         if self.transform:
-            image_tensor = self.transform(img)
+            image = self.transform(image)
 
         # Success
-        return {"caption": tokenized_text, "image": image_tensor}
+        return {"caption": caption, "image": image}
 
 
 class CC3MTrain(TextImageBase):
-    def __init__(self, folder: str,
-                 tokenizer: OmegaConf,
-                 resolution: Union[Tuple[int, int], int] = 256,
-                 resize_ratio: float = 0.75) -> None:
-        transform = T.Compose([
-            T.RandomResizedCrop(resolution, scale=(resize_ratio, 1.), ratio=(1., 1.)),
-            T.ToTensor()
-        ])
-        
+    def __init__(self, folder: str, tokenizer: OmegaConf,
+                 resolution: Union[Tuple[int, int], int] = 256) -> None:
+        if isinstance(resolution, int):
+            resolution = [resolution, resolution]
+
+        rescaler = albumentations.SmallestMaxSize(max_size=min(resolution))
+        cropper = albumentations.RandomCrop(height=resolution[0], width=resolution[1])
+
+        transform = albumentations.Compose([self.rescaler, self.cropper])
         super().__init__(folder, 'train', tokenizer, transform)
 
 
 class CC3MValidation(TextImageBase):
-    def __init__(self, folder: str,
-                 tokenizer: OmegaConf,
+    def __init__(self, folder: str, tokenizer: OmegaConf,
                  resolution: Union[Tuple[int, int], int] = 256) -> None:
         if isinstance(resolution, int):
-            resolution = (resolution, resolution)
-            
-        transform = T.Compose([
-            T.Resize(resolution),
-            T.ToTensor()
-        ])
+            resolution = [resolution, resolution]
         
+        rescaler = albumentations.SmallestMaxSize(max_size=min(resolution))
+        cropper = albumentations.CenterCrop(height=resolution[0], width=resolution[1])
+
+        transform = albumentations.Compose([rescaler, cropper])
         super().__init__(folder, 'val', tokenizer, transform)

@@ -63,9 +63,9 @@ Training is easy with one line:
 - [ ] Add dataloader for some common dataset
     - [x] ImageNet
     - [x] LSUN
-    - [ ] COCO
-        - [ ] Add COCO Segmentation
-        - [ ] Add COCO Caption
+    - [x] COCO
+        - [x] Add COCO Segmentation
+        - [x] Add COCO Caption
     - [x] CC3M
 - [ ] Add pretrained models 
 
