@@ -12,9 +12,10 @@ import PIL
 from typing import Any, Tuple, Union, List, Optional, Callable
 import subprocess
 from os.path import join, dirname, abspath, isfile, isdir
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 
 import torch
-from torchvision import transforms as T
 from torchvision.datasets import LSUN
 
 
@@ -31,13 +32,15 @@ class LSUNBase(LSUN):
 
 class LSUNTrain(LSUNBase):
     def __init__(self, root: str, classes: Union[Tuple[str, str]],
-                 resolution: Union[Tuple[int, int], int] = 256,
-                 resize_ratio: float = 0.75) -> None:
+                 resolution: Union[Tuple[int, int], int] = 256) -> None:
+        if isinstance(resolution, int):
+            resolution = [resolution, resolution]
 
-        transform = T.Compose([
-            T.RandomResizedCrop(resolution, scale=(resize_ratio, 1.), ratio=(1., 1.)),
-            T.RandomHorizontalFlip(),
-            T.ToTensor(),
+        transform = A.Compose([
+            A.SmallestMaxSize(max_size=min(resolution)),
+            A.RandomCrop(height=resolution[0], width=resolution[1]),
+            A.RandomHorizontalFlip(),
+            ToTensorV2()
         ])
 
         if classes not in ['train', 'val']:
@@ -53,14 +56,14 @@ class LSUNTrain(LSUNBase):
 
 class LSUNValidation(LSUNBase):
     def __init__(self, root: str, classes: Union[Tuple[str, str]],
-                 resolution: Union[Tuple[int, int], int] = 256,) -> None:
-
+                 resolution: Union[Tuple[int, int], int] = 256) -> None:
         if isinstance(resolution, int):
-            resolution = (resolution, resolution)
-        
-        transform = T.Compose([
-            T.Resize(resolution),
-            T.ToTensor(),
+            resolution = [resolution, resolution]
+
+        transform = A.Compose([
+            A.SmallestMaxSize(max_size=min(resolution)),
+            A.CenterCrop(height=resolution[0], width=resolution[1]),
+            ToTensorV2()
         ])
 
         if classes not in ['train', 'val']:

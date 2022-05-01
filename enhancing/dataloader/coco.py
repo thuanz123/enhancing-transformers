@@ -1,5 +1,5 @@
 import json
-import albumentations
+import albumentations as A
 from omegaconf import OmegaConf
 from typing import Optional, List, Callable, Union, Tuple
 from pathlib import Path
@@ -113,11 +113,9 @@ class COCOTrain(COCOBase):
         if isinstance(resolution, int):
             resolution = [resolution, resolution]
 
-        rescaler = albumentations.SmallestMaxSize(max_size=min(resolution))
-        cropper = albumentations.RandomCrop(height=resolution[0], width=resolution[1])
-        
-        transform = albumentations.Compose(
-            [rescaler, cropper],
+        transform = A.Compose(
+            [A.SmallestMaxSize(max_size=min(resolution)),
+             A.RandomCrop(height=resolution[0], width=resolution[1])],
             additional_targets={"segmentation": "image"})
         
         super().__init__(dataroot, labelroot, stuffthingroot, "train",
@@ -130,11 +128,9 @@ class COCOValidation(COCOBase):
         if isinstance(resolution, int):
             resolution = [resolution, resolution]
 
-        rescaler = albumentations.SmallestMaxSize(max_size=min(resolution))
-        cropper = albumentations.CenterCrop(height=resolution[0], width=resolution[1])
-        
-        transform = albumentations.Compose(
-            [rescaler, cropper],
+        transform = A.Compose(
+            [A.SmallestMaxSize(max_size=min(resolution)),
+             A.CenterCrop(height=resolution[0], width=resolution[1])],
             additional_targets={"segmentation": "image"})
         
         super().__init__(dataroot, labelroot, stuffthingroot, "val",

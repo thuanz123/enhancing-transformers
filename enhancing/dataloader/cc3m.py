@@ -11,8 +11,8 @@ from typing import Optional, Union, Callable, Tuple, Any
 from pathlib import Path
 from omegaconf import OmegaConf
 from PIL import Image
-import albumentations
-
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 from torch.utils.data import Dataset
 
 from ..utils.general import initialize_from_config
@@ -39,7 +39,6 @@ class CC3MBase(Dataset):
         caption = self.tokenizer.tokenize(caption).squeeze(0)
 
         image = Image.open(image_file).convert('RGB')
-        image = np.array(image).astype(np.uint8)
         if self.transform:
             image = self.transform(image)
 
@@ -53,10 +52,12 @@ class CC3MTrain(TextImageBase):
         if isinstance(resolution, int):
             resolution = [resolution, resolution]
 
-        rescaler = albumentations.SmallestMaxSize(max_size=min(resolution))
-        cropper = albumentations.RandomCrop(height=resolution[0], width=resolution[1])
-
-        transform = albumentations.Compose([self.rescaler, self.cropper])
+        transform = albumentations.Compose([
+            A.SmallestMaxSize(max_size=min(resolution)),
+            A.RandomCrop(height=resolution[0], width=resolution[1]),
+            ToTensorV2(),
+        ])
+        
         super().__init__(folder, 'train', tokenizer, transform)
 
 
@@ -65,9 +66,11 @@ class CC3MValidation(TextImageBase):
                  resolution: Union[Tuple[int, int], int] = 256) -> None:
         if isinstance(resolution, int):
             resolution = [resolution, resolution]
-        
-        rescaler = albumentations.SmallestMaxSize(max_size=min(resolution))
-        cropper = albumentations.CenterCrop(height=resolution[0], width=resolution[1])
 
-        transform = albumentations.Compose([rescaler, cropper])
+        transform = albumentations.Compose([
+            A.SmallestMaxSize(max_size=min(resolution)),
+            A.CenterCrop(height=resolution[0], width=resolution[1]),
+            ToTensorV2(),
+        ])
+        
         super().__init__(folder, 'val', tokenizer, transform)

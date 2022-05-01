@@ -12,6 +12,8 @@ from pathlib import Path
 from random import randint, choice
 from omegaconf import OmegaConf
 import PIL
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 
 import torch
 from torch.utils.data import Dataset
@@ -91,11 +93,14 @@ class TextImageBase(Dataset):
 class TextImageTrain(TextImageBase):
     def __init__(self, folder: str,
                  tokenizer: OmegaConf,
-                 resolution: Union[Tuple[int, int], int] = 256,
-                 resize_ratio: float = 0.75) -> None:
-        transform = T.Compose([
-            T.RandomResizedCrop(resolution, scale=(resize_ratio, 1.), ratio=(1., 1.)),
-            T.ToTensor()
+                 resolution: Union[Tuple[int, int], int] = 256) -> None:
+        if isinstance(resolution, int):
+            resolution = [resolution, resolution]
+
+        transform = albumentations.Compose([
+            A.SmallestMaxSize(max_size=min(resolution)),
+            A.RandomCrop(height=resolution[0], width=resolution[1]),
+            ToTensorV2(),
         ])
         
         super().__init__(folder, 'train', tokenizer, transform)
@@ -106,11 +111,12 @@ class TextImageValidation(TextImageBase):
                  tokenizer: OmegaConf,
                  resolution: Union[Tuple[int, int], int] = 256) -> None:
         if isinstance(resolution, int):
-            resolution = (resolution, resolution)
-            
-        transform = T.Compose([
-            T.Resize(resolution),
-            T.ToTensor()
+            resolution = [resolution, resolution]
+
+        transform = albumentations.Compose([
+            A.SmallestMaxSize(max_size=min(resolution)),
+            A.CenterCrop(height=resolution[0], width=resolution[1]),
+            ToTensorV2(),
         ])
         
         super().__init__(folder, 'val', tokenizer, transform)

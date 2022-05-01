@@ -12,9 +12,10 @@ from pathlib import Path
 from random import randint, choice
 from omegaconf import OmegaConf
 import PIL
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 
 import torch
-from torchvision import transforms as T
 from torchvision.datasets import ImageFolder
 
 from ..utils.general import initialize_from_config
@@ -35,10 +36,13 @@ class ClassImageTrain(ClassImageBase):
     def __init__(self, root: str,
                  resolution: Union[Tuple[int, int], int] = 256,
                  resize_ratio: float = 0.75) -> None:
-        transform = T.Compose([
-            T.RandomResizedCrop(resolution, scale=(resize_ratio, 1.), ratio=(1., 1.)),
-            T.RandomHorizontalFlip(),
-            T.ToTensor()
+        if isinstance(resolution, int):
+            resolution = [resolution, resolution]
+
+        transform = A.Compose([
+            A.SmallestMaxSize(max_size=min(resolution)),
+            A.RandomCrop(height=resolution[0], width=resolution[1]),
+            ToTensorV2()
         ])
         
         super().__init__(root, 'train', transform)
@@ -48,11 +52,12 @@ class ClassImageValidation(ClassImageBase):
     def __init__(self, root: str,
                  resolution: Union[Tuple[int, int], int] = 256) -> None:
         if isinstance(resolution, int):
-            resolution = (resolution, resolution)
-            
-        transform = T.Compose([
-            T.Resize(resolution),
-            T.ToTensor()
+            resolution = [resolution, resolution]
+
+        transform = A.Compose([
+            A.SmallestMaxSize(max_size=min(resolution)),
+            A.CenterCrop(height=resolution[0], width=resolution[1]),
+            ToTensorV2()
         ])
         
         super().__init__(root, 'val', transform)
