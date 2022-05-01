@@ -60,7 +60,7 @@ Training is easy with one line:
 - [x] Add RQ-VAE
     - [x] Add Residual Quantizer
     - [x] Add RQ-Transformer
-- [ ] Add dataloader for some common dataset
+- [x] Add dataloader for some common dataset
     - [x] ImageNet
     - [x] LSUN
     - [x] COCO
