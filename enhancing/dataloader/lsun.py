@@ -3,10 +3,6 @@
 # Copyright (c) 2022 Thuan H. Nguyen. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------------------
-# Modified from LSUN (https://github.com/fyu/lsun)
-# Copyright (c) 2015 Fisher Yu. All Rights Reserved.
-# ------------------------------------------------------------------------------------
-
 
 import PIL
 from typing import Any, Tuple, Union, List, Optional, Callable

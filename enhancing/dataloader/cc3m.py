@@ -3,9 +3,6 @@
 # Copyright (c) 2022 Thuan H. Nguyen. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------------------
-# Modified from DALLE-pytorch (https://github.com/lucidrains/DALLE-pytorch)
-# Copyright (c) 2020 Phil Wang. All Rights Reserved.
-# ------------------------------------------------------------------------------------
 
 from typing import Optional, Union, Callable, Tuple, Any
 from pathlib import Path
