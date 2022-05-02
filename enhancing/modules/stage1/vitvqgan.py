@@ -28,15 +28,13 @@ class ViTVQ(pl.LightningModule):
         self.path = path
         self.ignore_keys = ignore_keys 
         self.image_key = image_key
-        self.image_size = hparams.image_size
-        self.latent_dim = hparams.dim
         
         self.loss = initialize_from_config(loss)
         self.encoder = Encoder(**hparams)
         self.decoder = Decoder(**hparams)
         self.quantizer = VectorQuantizer(**qparams)
-        self.pre_quant = nn.Linear(self.latent_dim, qparams.embed_dim)
-        self.post_quant = nn.Linear(qparams.embed_dim, self.latent_dim)
+        self.pre_quant = nn.Linear(hparams.dim, qparams.embed_dim)
+        self.post_quant = nn.Linear(qparams.embed_dim, hparams.dim)
 
         if path is not None:
             self.init_from_ckpt(path, ignore_keys)
