@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------------
 # Boosting Transformers
 # Copyright (c) 2022 Thuan H. Nguyen. All Rights Reserved.
-# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# Licensed under the MIT License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------------------
 # Modified from Taming Transformers (https://github.com/CompVis/taming-transformers)
 # Copyright (c) 2020 Patrick Esser and Robin Rombach and Björn Ommer. All Rights Reserved.

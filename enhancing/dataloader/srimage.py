@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------------
 # Enhancing Transformers
 # Copyright (c) 2022 Thuan H. Nguyen. All Rights Reserved.
-# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# Licensed under the MIT License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------------------
 # Modified from DALLE-pytorch (https://github.com/lucidrains/DALLE-pytorch)
 # Copyright (c) 2020 Phil Wang. All Rights Reserved.
