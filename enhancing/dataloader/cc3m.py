@@ -8,8 +8,8 @@ from typing import Optional, Union, Callable, Tuple, Any
 from pathlib import Path
 from omegaconf import OmegaConf
 from PIL import Image
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
+
+from torchvision import transforms as T
 from torch.utils.data import Dataset
 
 from ..utils.general import initialize_from_config
@@ -35,7 +35,10 @@ class CC3MBase(Dataset):
                 
         caption = self.tokenizer.tokenize(caption).squeeze(0)
 
-        image = Image.open(image_file).convert('RGB')
+        image = Image.open(image_file)
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+        
         if self.transform:
             image = self.transform(image)
 
@@ -46,13 +49,10 @@ class CC3MBase(Dataset):
 class CC3MTrain(TextImageBase):
     def __init__(self, folder: str, tokenizer: OmegaConf,
                  resolution: Union[Tuple[int, int], int] = 256) -> None:
-        if isinstance(resolution, int):
-            resolution = [resolution, resolution]
-
-        transform = albumentations.Compose([
-            A.SmallestMaxSize(max_size=min(resolution)),
-            A.RandomCrop(height=resolution[0], width=resolution[1]),
-            ToTensorV2(),
+        transform = T.Compose([
+            T.Resize(resolution),
+            T.RandomCrop(resolution),
+            T.ToTensor(),
         ])
         
         super().__init__(folder, 'train', tokenizer, transform)
@@ -61,13 +61,10 @@ class CC3MTrain(TextImageBase):
 class CC3MValidation(TextImageBase):
     def __init__(self, folder: str, tokenizer: OmegaConf,
                  resolution: Union[Tuple[int, int], int] = 256) -> None:
-        if isinstance(resolution, int):
-            resolution = [resolution, resolution]
-
-        transform = albumentations.Compose([
-            A.SmallestMaxSize(max_size=min(resolution)),
-            A.CenterCrop(height=resolution[0], width=resolution[1]),
-            ToTensorV2(),
+        transform = T.Compose([
+            T.Resize(resolution),
+            T.CenterCrop(resolution),
+            T.ToTensor(),
         ])
         
         super().__init__(folder, 'val', tokenizer, transform)

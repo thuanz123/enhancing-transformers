@@ -12,11 +12,10 @@ from pathlib import Path
 from random import randint, choice
 from omegaconf import OmegaConf
 import PIL
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
 
 from torch import nn
 from torch.utils.data import Dataset
+from torchvision import transforms as T
 
 
 class SRBase(Dataset):
@@ -94,12 +93,12 @@ class SRTrain(SRBase):
         self.resolution = resolution
         self.downscale = downscale
 
-        transform = A.Compose([
-            A.RandomCrop(crop_resolution),
-            A.Lambda(self.pad),
-            A.RandomHorizontalFlip(),
-            A.RandomVerticalFlip(),
-            ToTensorV2()
+        transform = T.Compose([
+            T.RandomCrop(crop_resolution),
+            T.Lambda(self.pad),
+            T.RandomHorizontalFlip(),
+            T.RandomVerticalFlip(),
+            T.ToTensor()
         ])        
         
         super().__init__(folder, 'train', transform)
@@ -113,9 +112,9 @@ class SRValidation(SRBase):
         self.resolution = resolution
         self.downscale = downscale
         
-        transform = A.Compose([
-            A.Lambda(self.pad),
-            ToTensorV2()
+        transform = T.Compose([
+            T.Lambda(self.pad),
+            T.ToTensor()
         ])
 
         super().__init__(folder, 'val', transform)

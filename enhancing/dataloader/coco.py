@@ -68,7 +68,7 @@ class COCOBase(Dataset):
 
     def preprocess_image(self, image_path, segmentation_path):
         image = Image.open(image_path)
-        if not image.mode == "RGB":
+        if image.mode != "RGB":
             image = image.convert("RGB")
         image = np.array(image).astype(np.uint8)
 

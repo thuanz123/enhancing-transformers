@@ -4,15 +4,14 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------------------
 
+import numpy as np
 from typing import Optional, Union, Callable, Tuple, Any
 from pathlib import Path
 from random import randint, choice
 from omegaconf import OmegaConf
-import PIL
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
 
 import torch
+from torchvision import transforms as T
 from torchvision.datasets import ImageFolder
 
 from ..utils.general import initialize_from_config
@@ -24,9 +23,9 @@ class ClassImageBase(ImageFolder):
         super().__init__(root, transform)
         
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
-        sample, target = super().__getitem__(index)
+        image, target = super().__getitem__(index)
 
-        return {'image': sample, 'class': torch.tensor([target])}
+        return {'image': image, 'class': torch.tensor([target])}
 
 
 class ClassImageTrain(ClassImageBase):
@@ -36,10 +35,11 @@ class ClassImageTrain(ClassImageBase):
         if isinstance(resolution, int):
             resolution = [resolution, resolution]
 
-        transform = A.Compose([
-            A.SmallestMaxSize(max_size=min(resolution)),
-            A.RandomCrop(height=resolution[0], width=resolution[1]),
-            ToTensorV2()
+        transform = T.Compose([
+            T.Resize(resolution),
+            T.RandomCrop(resolution),
+            T.RandomHorizontalFlip(),
+            T.ToTensor()
         ])
         
         super().__init__(root, 'train', transform)
@@ -51,10 +51,10 @@ class ClassImageValidation(ClassImageBase):
         if isinstance(resolution, int):
             resolution = [resolution, resolution]
 
-        transform = A.Compose([
-            A.SmallestMaxSize(max_size=min(resolution)),
-            A.CenterCrop(height=resolution[0], width=resolution[1]),
-            ToTensorV2()
+        transform = T.Compose([
+            T.Resize(resolution),
+            T.CenterCrop(resolution),
+            T.ToTensor()
         ])
         
         super().__init__(root, 'val', transform)

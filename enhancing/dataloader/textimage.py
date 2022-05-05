@@ -12,14 +12,13 @@ from pathlib import Path
 from random import randint, choice
 from omegaconf import OmegaConf
 import PIL
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
 
 import torch
 from torch.utils.data import Dataset
 from torchvision import transforms as T
 
 from ..utils.general import initialize_from_config
+
 
 class TextImageBase(Dataset):
     def __init__(self, folder: str, split: str,
@@ -94,13 +93,10 @@ class TextImageTrain(TextImageBase):
     def __init__(self, folder: str,
                  tokenizer: OmegaConf,
                  resolution: Union[Tuple[int, int], int] = 256) -> None:
-        if isinstance(resolution, int):
-            resolution = [resolution, resolution]
-
-        transform = albumentations.Compose([
-            A.SmallestMaxSize(max_size=min(resolution)),
-            A.RandomCrop(height=resolution[0], width=resolution[1]),
-            ToTensorV2(),
+        transform = T.Compose([
+            T.Resize(resolution),
+            T.RandomCrop(resolution),
+            T.ToTensor(),
         ])
         
         super().__init__(folder, 'train', tokenizer, transform)
@@ -113,10 +109,10 @@ class TextImageValidation(TextImageBase):
         if isinstance(resolution, int):
             resolution = [resolution, resolution]
 
-        transform = albumentations.Compose([
-            A.SmallestMaxSize(max_size=min(resolution)),
-            A.CenterCrop(height=resolution[0], width=resolution[1]),
-            ToTensorV2(),
+        transform = T.Compose([
+            T.Resize(resolution),
+            T.CenterCrop(resolution),
+            T.ToTensor(),
         ])
         
         super().__init__(folder, 'val', tokenizer, transform)

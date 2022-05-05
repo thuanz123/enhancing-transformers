@@ -6,10 +6,9 @@
 
 import PIL
 from typing import Any, Tuple, Union
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
 
 import torch
+from torchvision import transforms as T
 from torchvision.datasets import ImageNet
 
 
@@ -19,21 +18,18 @@ class ImageNetBase(ImageNet):
         super().__init__(root=root, split='train', transform=transform)
         
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
-        sample, target = super().__getitem__(index)
+        image, target = super().__getitem__(index)
 
-        return {'image': sample, 'class': target.unsqueeze(-1)}
+        return {'image': image, 'class': target.unsqueeze(-1)}
 
 
 class ImageNetTrain(ImageNetBase):
     def __init__(self, root: str, resolution: Union[Tuple[int, int], int] = 256) -> None:
-        if isinstance(resolution, int):
-            resolution = [resolution, resolution]
-
-        transform = A.Compose([
-            A.SmallestMaxSize(max_size=min(resolution)),
-            A.RandomCrop(height=resolution[0], width=resolution[1]),
-            A.RandomHorizontalFlip(),
-            ToTensorV2()
+        transform = T.Compose([
+            T.Resize(resolution),
+            T.RandomCrop(resolution),
+            T.RandomHorizontalFlip(),
+            T.ToTensor()
         ])
         
         super().__init__(root=root, split='train', transform)
@@ -41,13 +37,10 @@ class ImageNetTrain(ImageNetBase):
 
 class ImageNetValidation(ImageNetBase):
     def __init__(self, root: str, resolution: Union[Tuple[int, int], int] = 256) -> None:
-        if isinstance(resolution, int):
-            resolution = [resolution, resolution]
-
-        transform = A.Compose([
-            A.SmallestMaxSize(max_size=min(resolution)),
-            A.CenterCrop(height=resolution[0], width=resolution[1]),
-            ToTensorV2()
+        transform = T.Compose([
+            T.Resize(resolution),
+            T.CenterCrop(resolution),
+            T.ToTensor()
         ])
         
         super().__init__(root=root, split='val', transform)
