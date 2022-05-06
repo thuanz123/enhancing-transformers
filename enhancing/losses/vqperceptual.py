@@ -31,7 +31,7 @@ class VQLPIPSWithDiscriminator(nn.Module):
         
         super().__init__()
         assert disc_loss in ["hinge", "vanilla", "least_square"], f"Unknown GAN loss '{disc_loss}'."
-        self.perceptual_loss = lpips.LPIPS(net="alex", verbose=False)
+        self.perceptual_loss = lpips.LPIPS(net="vgg", verbose=False)
 
         self.codebook_weight = codebook_weight 
         self.loglaplace_weight = loglaplace_weight 
