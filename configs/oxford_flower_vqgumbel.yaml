@@ -1,5 +1,5 @@
 model:
-    target: enhancing.modules.stage1.vitvqgan.ViTVQGumbel
+    target: enhancing.modules.stage1.vqsae.VQGumbel
     params:
         image_key: image
         temperature_scheduler:
@@ -11,24 +11,24 @@ model:
                 start: 0.9
                 max_decay_steps: 100000
         hparams:
-            image_size: 256
-            patch_size: 16
-            dim: 768
-            depth: 12
-            heads: 12
-            mlp_dim: 3072
+            dims: [3, 192, 384, 384, 384]
+            hidden_dims: [48, 96, 96, 96]
+            stage_depths: [4, 3, 8, 3]
+            scales: [7, 2, 1, 1]
+            mlp_ratio: 3
         qparams:
-            embed_dim: 256
-            n_embed: 16384
+            embed_dim: 32 
+            n_embed: 8192 
             use_residual: True
             num_quantizers: 4
         loss:
             target: enhancing.losses.vqperceptual.VQLPIPSWithDiscriminator
             params:
-                disc_start: 250001
+                disc_start: 50001
                 loglaplace_weight: 0.1
                 loggaussian_weight: 1.0
                 perceptual_weight: 0.1
+                codebook_weight: 1.0
 
 dataset:
     target: enhancing.dataloader.DataModuleFromConfig
@@ -36,15 +36,13 @@ dataset:
         batch_size: 4
         num_workers: 2
         train:
-            target: enhancing.dataloader.lsun.LSUNTrain
+            target: enhancing.dataloader.classimage.ClassImageTrain
             params:
                 root: data
-                classes: church_outdoor
-                resolution: 256
+                resolution: 224
                 
         validation:
-            target: enhancing.dataloader.lsun.LSUNValidation
+            target: enhancing.dataloader.classimage.ClassImageValidation
             params:
                 root: data
-                classes: church_outdoor
-                resolution: 256
+                resolution: 224

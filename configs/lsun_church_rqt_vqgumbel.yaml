@@ -12,7 +12,7 @@ model:
             params:
                 image_key: image
                 temperature_scheduler:
-                    target: enhancing.utils.callback.DummyScheduler
+                    target: enhancing.utils.scheduler.DummyScheduler
                 hparams:
                     image_size: 256
                     patch_size: 16
