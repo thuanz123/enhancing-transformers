@@ -12,6 +12,7 @@ from omegaconf import OmegaConf
 
 import torch
 import torch.nn as nn
+from torch.optim import lr_scheduler
 import torch.nn.functional as F
 import pytorch_lightning as pl
 
@@ -21,7 +22,8 @@ from ...utils.general import initialize_from_config
 
 class CondTransformer(pl.LightningModule):
     def __init__(self, cond_key: str, cond: OmegaConf, stage1: OmegaConf, transformer: OmegaConf,
-                 path: Optional[str] = None, ignore_keys: List[str] = list(), code_shape: List[int] = None) -> None:
+                 path: Optional[str] = None, ignore_keys: List[str] = list(),
+                 code_shape: List[int] = None, scheduler: Optional[OmegaConf] = None) -> None:
         super().__init__()
         
         # get condition key and code shape
@@ -36,6 +38,9 @@ class CondTransformer(pl.LightningModule):
         
         # load transformer
         self.transformer = initialize_from_config(transformer)
+
+        # get lr scheduler
+        self.scheduler = initialize_from_config(scheduler) if scheduler else None
 
         # make the parameters in stage1 model not trainable
         self.stage1_model.eval()
@@ -117,7 +122,7 @@ class CondTransformer(pl.LightningModule):
 
         return loss
 
-    def training_step(self, batch: Tuple[Any, Any], batch_idx: int) -> torch.FloatTensor:
+    def training_step(self, batch: Tuple[Any, Any], batch_idx: int, optimizer_idx: int = 0) -> torch.FloatTensor:
         loss = self.shared_step(batch, batch_idx)
         self.log("train/total_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
 
@@ -176,9 +181,17 @@ class CondTransformer(pl.LightningModule):
             {"params": [param_dict[pn] for pn in sorted(list(decay))], "weight_decay": 0.01},
             {"params": [param_dict[pn] for pn in sorted(list(no_decay))], "weight_decay": 0.0},
         ]
-        optimizer = torch.optim.AdamW(optim_groups, lr=self.learning_rate, betas=(0.9, 0.95))
+        optimizer = [torch.optim.AdamW(optim_groups, lr=self.learning_rate, betas=(0.9, 0.95))]
+        scheduler = []
+
+        if self.scheduler is not None:
+            scheduler = [{
+                'scheduler': lr_scheduler.LambdaLR(optimizer, lr_lambda=self.scheduler.schedule),
+                'interval': 'step',
+                'frequency': 1
+            }]
         
-        return optimizer
+        return optimizer, scheduler
     
     def log_images(self, batch: Tuple[Any, Any], *args, **kwargs) -> Dict:
         log = dict()
