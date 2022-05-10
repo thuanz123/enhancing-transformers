@@ -13,6 +13,7 @@ from omegaconf import OmegaConf
 import PIL
 import torch
 import torch.nn as nn
+from torch.optim import lr_scheduler
 from torchvision import transforms as T
 import pytorch_lightning as pl
 
@@ -22,8 +23,8 @@ from ...utils.general import get_obj_from_str, initialize_from_config
 
 
 class ViTVQ(pl.LightningModule):
-    def __init__(self, image_key: str, hparams: OmegaConf, qparams: OmegaConf,
-                 loss: OmegaConf, path: Optional[str] = None, ignore_keys: List[str] = list()) -> None:
+    def __init__(self, image_key: str, hparams: OmegaConf, qparams: OmegaConf, loss: OmegaConf,
+                 path: Optional[str] = None, ignore_keys: List[str] = list(), scheduler: Optional[OmegaConf] = None) -> None:
         super().__init__()
         self.path = path
         self.ignore_keys = ignore_keys 
@@ -35,6 +36,8 @@ class ViTVQ(pl.LightningModule):
         self.quantizer = VectorQuantizer(**qparams)
         self.pre_quant = nn.Linear(hparams.dim, qparams.embed_dim)
         self.post_quant = nn.Linear(qparams.embed_dim, hparams.dim)
+
+        self.scheduler = initialize_from_config(scheduler) if scheduler else None
 
         if path is not None:
             self.init_from_ckpt(path, ignore_keys)
@@ -97,7 +100,7 @@ class ViTVQ(pl.LightningModule):
 
         return x.contiguous()
 
-    def training_step(self, batch: Tuple[Any, Any], batch_idx: int, optimizer_idx: int) -> torch.FloatTensor:
+    def training_step(self, batch: Tuple[Any, Any], batch_idx: int, optimizer_idx: int = 0) -> torch.FloatTensor:
         x = self.get_input(batch, self.image_key)
         xrec, qloss = self(x)
 
@@ -140,21 +143,81 @@ class ViTVQ(pl.LightningModule):
         return self.log_dict
 
     def configure_optimizers(self) -> Tuple[List, List]:
+        """
+        Following minGPT:
+        This long function is unfortunately doing something very simple and is being very defensive:
+        We are separating out all parameters of the model into two buckets: those that will experience
+        weight decay for regularization and those that won't (biases, and layernorm/embedding weights).
+        We are then returning the PyTorch optimizer object.
+        """
+        # separate out all parameters to those that will and won't experience regularizing weight decay
+        decay = set()
+        no_decay = set()
+        
+        list_modules = list(self.encoder.named_modules()) + \
+                       list(self.decoder.named_modules()) + \
+                       list(self.pre_quant.named_modules()) + \
+                       list(self.post_quant.named_modules()) + \
+                       list(self.quantizer.named_modules())
+        list_parameters = list(self.encoder.named_parameters()) + \
+                          list(self.decoder.named_parameters()) + \
+                          list(self.pre_quant.named_parameters()) + \
+                          list(self.post_quant.named_parameters()) + \
+                          list(self.quantizer.named_parameters())
+        
+        whitelist_weight_modules = (torch.nn.Linear, torch.nn.Conv2d)
+        blacklist_weight_modules = (torch.nn.LayerNorm, torch.nn.Embedding)
+        
+        for mn, m in list_modules:
+            for pn, p in m.named_parameters():
+                fpn = '%s.%s' % (mn, pn) if mn else pn # full param name
+
+                if pn.endswith('bias'):
+                    # all biases will not be decayed
+                    no_decay.add(fpn)
+                elif pn.endswith('weight') and isinstance(m, whitelist_weight_modules):
+                    # weights of whitelist modules will be weight decayed
+                    decay.add(fpn)
+                elif pn.endswith('weight') and isinstance(m, blacklist_weight_modules):
+                    # weights of blacklist modules will NOT be weight decayed
+                    no_decay.add(fpn)
+
+        # special case the position embedding parameter in the root GPT module as not decayed
+        no_decay.add('en_pos_embedding')
+        no_decay.add('de_pos_embedding')
+        
+        # validate that we considered every parameter
+        param_dict = {pn: p for pn, p in list_parameters}
+        inter_params = decay & no_decay 
+        union_params = decay | no_decay
+        assert len(inter_params) == 0, "parameters %s made it into both decay/no_decay sets!" % (str(inter_params), )
+        assert len(param_dict.keys() - union_params) == 0, "parameters %s were not separated into either decay/no_decay/ignored set!" \
+                                                    % (str(param_dict.keys() - union_params), )
+
+        # create the pytorch optimizer object
         lr = self.learning_rate
-        opt_ae = torch.optim.AdamW(list(self.encoder.parameters())+
-                                   list(self.decoder.parameters())+
-                                   list(self.pre_quant.parameters())+
-                                   list(self.post_quant.parameters())+
-                                   list(self.quantizer.parameters()),
-                                   lr=lr, betas=(0.5, 0.9), weight_decay=1e-4)
+        optim_groups = [
+            {"params": [param_dict[pn] for pn in sorted(list(decay))], "weight_decay": 1e-4},
+            {"params": [param_dict[pn] for pn in sorted(list(no_decay))], "weight_decay": 0.0},
+        ]
+        
+        optimizers = [torch.optim.AdamW(optim_groups, lr=lr, betas=(0.9, 0.99))]
+        schedulers = []
         
         if hasattr(self.loss, 'discriminator'):
-            opt_disc = torch.optim.AdamW(self.loss.discriminator.parameters(), lr=lr, betas=(0.5, 0.9), weight_decay=1e-4)
-            
-            return [opt_ae, opt_disc], []
-        else:
-            return opt_ae
+            optimizers.append(torch.optim.AdamW(self.loss.discriminator.parameters(), lr=lr, betas=(0.9, 0.99), weight_decay=1e-4))
 
+        if self.scheduler is not None:
+            scheduler = [
+                {
+                    'scheduler': lr_scheduler.LambdaLR(optimizer, lr_lambda=self.scheduler.schedule),
+                    'interval': 'step',
+                    'frequency': 1
+                } for optimizer in optimizers
+            ]
+   
+        return optimizers, schedulers
+        
     def log_images(self, batch: Tuple[Any, Any], *args, **kwargs) -> Dict:
         log = dict()
         x = self.get_input(batch, self.image_key).to(self.device)
@@ -167,9 +230,8 @@ class ViTVQ(pl.LightningModule):
 
 
 class ViTVQGumbel(ViTVQ):
-    def __init__(self, temperature_scheduler: OmegaConf,
-                 image_key: str, hparams: OmegaConf, qparams: OmegaConf,
-                 loss: OmegaConf, path: Optional[str] = None, ignore_keys: List[str] = list()) -> None:
+    def __init__(self, temperature_scheduler: OmegaConf, image_key: str, hparams: OmegaConf, qparams: OmegaConf,
+                 loss: OmegaConf, path: Optional[str] = None, ignore_keys: List[str] = list(), scheduler: Optional[OmegaConf] = None) -> None:
         super().__init__(image_key, hparams, qparams, loss, None, None)
 
         self.temperature_scheduler = initialize_from_config(temperature_scheduler)

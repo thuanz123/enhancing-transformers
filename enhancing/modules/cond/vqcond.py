@@ -33,7 +33,7 @@ def VQSegmentation(base_class: str, n_labels: int, *args, **kwargs) -> object:
             self.register_buffer("colorize", torch.randn(3, n_labels, 1, 1))
             super().__init__(*args, **kwargs)
 
-        def training_step(self, batch: Tuple[Any, Any], batch_idx: int) -> torch.FloatTensor:
+        def training_step(self, batch: Tuple[Any, Any], batch_idx: int, optimizer_idx: int = 0) -> torch.FloatTensor:
             x = self.get_input(batch, self.image_key)
             xrec, qloss = self(x)
             aeloss, log_dict_ae = self.loss(qloss, x, xrec, split="train")

@@ -19,7 +19,7 @@ from einops.layers.torch import Rearrange
 
 
 class Downsample(nn.Module):
-    def __init__(self, in_channel: int, out_channel: int, downscale: int) -> None:
+    def __init__(self, in_channel: int, out_channel: int, downscale: Union[int, Tuple[int, int]]) -> None:
         super().__init__()
         self.conv = nn.Conv2d(in_channel, out_channel, kernel_size=downscale, stride=downscale)
 
@@ -31,7 +31,7 @@ class Downsample(nn.Module):
 
 
 class Upsample(nn.Module):
-    def __init__(self, in_channel: int, out_channel: int, upscale: int) -> None:
+    def __init__(self, in_channel: int, out_channel: int, upscale: Union[int, Tuple[int, int]]) -> None:
         super().__init__()
         self.upsample = nn.Upsample(scale_factor=upscale)
         self.conv = nn.Conv2d(in_channel, out_channel, kernel_size=3, padding=1)
@@ -167,12 +167,12 @@ class ViTEncoder(nn.Module):
             nn.Conv2d(channels, dim, kernel_size=patch_size, stride=patch_size),
             Rearrange('b c h w -> b (h w) c'),
         )
-        self.pos_embedding = nn.Parameter(torch.randn(1, self.num_patches, dim))
+        self.en_pos_embedding = nn.Parameter(torch.randn(1, self.num_patches, dim))
         self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim)
 
     def forward(self, img: torch.FloatTensor) -> torch.FloatTensor:
         x = self.to_patch_embedding(img)
-        x += self.pos_embedding
+        x += self.en_pos_embedding
 
         return self.transformer(x)
 
@@ -192,15 +192,16 @@ class ViTDecoder(nn.Module):
         self.patch_dim = channels * patch_height * patch_width
 
         self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim)
-        self.pos_embedding = nn.Parameter(torch.randn(1, self.num_patches, dim))        
+        self.de_pos_embedding = nn.Parameter(torch.randn(1, self.num_patches, dim))        
         self.to_pixel = nn.Sequential(OrderedDict([
             ('reshape', Rearrange('b (h w) c -> b c h w', h=image_height // patch_height)),
-            ('conv_out', nn.ConvTranspose2d(dim, channels, kernel_size=patch_size, stride=patch_size)),
+            ('upsample', nn.Upsample(scale_factor=(patch_height, patch_width))),
+            ('conv_out', nn.Conv2d(dim, channels, kernel_size=3, padding=1))
         ]))
                                       
     def forward(self, token: torch.FloatTensor) -> torch.FloatTensor:
         x = self.transformer(token)
-        x += self.pos_embedding
+        x += self.de_pos_embedding
 
         return self.to_pixel(x)
 
@@ -210,7 +211,7 @@ class ViTDecoder(nn.Module):
 
 class SequencerEncoder(nn.Module):
     def __init__(self, mlp_ratio: int = 3, dims: List[int] = [3, 192, 384, 384, 384], hidden_dims: List[int] = [48, 96, 96, 96],
-                 stage_depths: List[int] = [4, 3, 8, 3], scales: List[int] = [7, 2, 1, 1]) -> None:
+                 stage_depths: List[int] = [4, 3, 8, 3], scales: List[Union[int, Tuple[int, int]]] = [7, 2, 1, 1]) -> None:
         super().__init__()
         assert (len(dims) - 1) == len(hidden_dims) == len(stage_depths) == len(scales)
         
@@ -232,7 +233,7 @@ class SequencerEncoder(nn.Module):
 
 class SequencerDecoder(nn.Module):
     def __init__(self, mlp_ratio: int = 3, dims: List[int] = [3, 192, 384, 384, 384], hidden_dims: List[int] = [48, 96, 96, 96],
-                 stage_depths: List[int] = [4, 3, 8, 3], scales: List[int] = [7, 2, 1, 1]) -> None:
+                 stage_depths: List[int] = [4, 3, 8, 3], scales: List[Union[int, Tuple[int, int]]] = [7, 2, 1, 1]) -> None:
         super().__init__()
         assert (len(dims) - 1) == len(hidden_dims) == len(stage_depths) == len(scales)
 

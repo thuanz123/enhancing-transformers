@@ -19,6 +19,44 @@ class DummyLoss(nn.Module):
         super().__init__()
 
 
+class VQLPIPS(nn.Module):
+    def __init__(self, disc_start: int,
+                 codebook_weight: float = 1.0,
+                 loglaplace_weight: float = 1.0,
+                 loggaussian_weight: float = 1.0,
+                 perceptual_weight: float = 1.0) -> None:
+        
+        super().__init__()
+        self.perceptual_loss = lpips.LPIPS(net="vgg", verbose=False)
+
+        self.codebook_weight = codebook_weight 
+        self.loglaplace_weight = loglaplace_weight 
+        self.loggaussian_weight = loggaussian_weight
+        self.perceptual_weight = perceptual_weight 
+
+    def forward(self, codebook_loss: torch.FloatTensor, inputs: torch.FloatTensor, reconstructions: torch.FloatTensor,
+                optimizer_idx: int, global_step: int, last_layer: Optional[nn.Module] = None, split: Optional[str] = "train") -> Tuple:
+        inputs = inputs.contiguous()
+        reconstructions = reconstructions.contiguous()       
+
+        loglaplace_loss = (reconstructions - inputs).abs().mean()
+        loggaussian_loss = (reconstructions - inputs).pow(2).mean()
+        perceptual_loss = self.perceptual_loss(inputs*2-1, reconstructions*2-1).mean()
+
+        nll_loss = self.loglaplace_weight * loglaplace_loss + self.loggaussian_weight * loggaussian_loss + self.perceptual_weight * perceptual_loss
+        loss = nll_loss + self.codebook_weight * codebook_loss
+        
+        log = {"{}/total_loss".format(split): loss.clone().detach(),
+               "{}/quant_loss".format(split): codebook_loss.detach(),
+               "{}/rec_loss".format(split): nll_loss.detach(),
+               "{}/loglaplace_loss".format(split): loglaplace_loss.detach(),
+               "{}/loggaussian_loss".format(split): loggaussian_loss.detach(),
+               "{}/perceptual_loss".format(split): perceptual_loss.detach()
+               }
+        
+        return loss, log
+
+
 class VQLPIPSWithDiscriminator(nn.Module):
     def __init__(self, disc_start: int,
                  disc_loss: str = 'hinge',

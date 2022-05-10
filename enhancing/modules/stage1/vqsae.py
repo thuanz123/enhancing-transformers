@@ -13,6 +13,7 @@ from omegaconf import OmegaConf
 import PIL
 import torch
 import torch.nn as nn
+from torch.optim import lr_scheduler
 from torchvision import transforms as T
 import pytorch_lightning as pl
 
@@ -22,8 +23,8 @@ from ...utils.general import get_obj_from_str, initialize_from_config
 
 
 class VQModel(pl.LightningModule):
-    def __init__(self, image_key: str, hparams: OmegaConf, qparams: OmegaConf,
-                 loss: OmegaConf, path: Optional[str] = None, ignore_keys: List[str] = list()) -> None:
+    def __init__(self, image_key: str, hparams: OmegaConf, qparams: OmegaConf, loss: OmegaConf,
+                 path: Optional[str] = None, ignore_keys: List[str] = list(), scheduler: Optional[OmegaConf] = None) -> None:
         super().__init__()
         self.path = path
         self.ignore_keys = ignore_keys 
@@ -35,6 +36,8 @@ class VQModel(pl.LightningModule):
         self.quantizer = VectorQuantizer(**qparams)
         self.pre_quant = nn.Linear(hparams.dims[-1], qparams.embed_dim)
         self.post_quant = nn.Linear(qparams.embed_dim, hparams.dims[-1])
+
+        self.scheduler = initialize_from_config(scheduler) if scheduler else None
 
         if path is not None:
             self.init_from_ckpt(path, ignore_keys)
@@ -141,19 +144,28 @@ class VQModel(pl.LightningModule):
 
     def configure_optimizers(self) -> Tuple[List, List]:
         lr = self.learning_rate
-        opt_ae = torch.optim.AdamW(list(self.encoder.parameters())+
-                                   list(self.decoder.parameters())+
-                                   list(self.pre_quant.parameters())+
-                                   list(self.post_quant.parameters())+
-                                   list(self.quantizer.parameters()),
-                                   lr=lr, betas=(0.5, 0.9), weight_decay=1e-4)
+        optim_groups = list(self.encoder.parameters()) + \
+                       list(self.decoder.parameters()) + \
+                       list(self.pre_quant.parameters()) + \
+                       list(self.post_quant.parameters()) + \
+                       list(self.quantizer.parameters())
+        
+        optimizers = [torch.optim.Adam(optim_groups, lr=lr, betas=(0.5, 0.9))]
+        schedulers = []
         
         if hasattr(self.loss, 'discriminator'):
-            opt_disc = torch.optim.AdamW(self.loss.discriminator.parameters(), lr=lr, betas=(0.5, 0.9), weight_decay=1e-4)
+            optimizers.append(torch.optim.Adam(self.loss.discriminator.parameters(), lr=lr, betas=(0.5, 0.9)))
+
+        if self.scheduler is not None:
+            schedulers = [
+                {
+                    'scheduler': lr_scheduler.LambdaLR(optimizer, lr_lambda=self.scheduler.schedule),
+                    'interval': 'step',
+                    'frequency': 1
+                } for optimizer in optimizers
+            ]
             
-            return [opt_ae, opt_disc], []
-        else:
-            return opt_ae
+        return optimizers, schedulers
 
     def log_images(self, batch: Tuple[Any, Any], *args, **kwargs) -> Dict:
         log = dict()
@@ -167,9 +179,8 @@ class VQModel(pl.LightningModule):
 
 
 class VQGumbel(VQModel):
-    def __init__(self, temperature_scheduler: OmegaConf,
-                 image_key: str, hparams: OmegaConf, qparams: OmegaConf,
-                 loss: OmegaConf, path: Optional[str] = None, ignore_keys: List[str] = list()) -> None:
+    def __init__(self, temperature_scheduler: OmegaConf, image_key: str, hparams: OmegaConf, qparams: OmegaConf,
+                 loss: OmegaConf, path: Optional[str] = None, ignore_keys: List[str] = list(), scheduler: Optional[OmegaConf] = None) -> None:
         super().__init__(image_key, hparams, qparams, loss, None, None)
 
         self.temperature_scheduler = initialize_from_config(temperature_scheduler)
