@@ -186,7 +186,7 @@ class CondTransformer(pl.LightningModule):
 
         if self.scheduler is not None:
             scheduler = [{
-                'scheduler': lr_scheduler.LambdaLR(optimizer, lr_lambda=self.scheduler.schedule),
+                'scheduler': lr_scheduler.LambdaLR(optimizer[0], lr_lambda=self.scheduler.schedule),
                 'interval': 'step',
                 'frequency': 1
             }]
