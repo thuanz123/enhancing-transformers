@@ -34,8 +34,6 @@ class CondTransformer(pl.LightningModule):
         
         # load transformer
         self.transformer = initialize_from_config(transformer)
-        if stage1.params.qparams.use_residual:
-            assert 'RQTransformer' in transformer.target
 
         # make the parameters in stage1 model not trainable
         self.stage1_model.eval()
