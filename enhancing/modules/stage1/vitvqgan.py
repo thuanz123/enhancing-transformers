@@ -240,7 +240,7 @@ class ViTVQGumbel(ViTVQ):
         if path is not None:
             self.init_from_ckpt(path, ignore_keys)
 
-    def training_step(self, batch: Tuple[Any, Any], batch_idx: int, optimizer_idx: int) -> torch.FloatTensor:
+    def training_step(self, batch: Tuple[Any, Any], batch_idx: int, optimizer_idx: int = 0) -> torch.FloatTensor:
         self.quantizer.temperature = self.temperature_scheduler(self.global_step)
         loss = super().training_step(batch, batch_idx, optimizer_idx)
         
