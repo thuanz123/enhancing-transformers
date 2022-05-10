@@ -1,7 +1,7 @@
 model:
     target: enhancing.modules.stage2.transformer.CondTransformer
     params:
-        code_shape: [16, 16]
+        code_shape: [16, 16, 4]
         cond_key: class
         cond: 
             target: enhancing.modules.cond.dummycond.ClassCond
