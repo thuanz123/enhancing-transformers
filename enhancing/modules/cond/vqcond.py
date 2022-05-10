@@ -16,7 +16,7 @@ import torch.nn.functional as F
 from ...utils.general import get_obj_from_str
 
 
-def ViTVQCond(base_class: str, *args, **kwargs) -> object:
+def VQCond(base_class: str, *args, **kwargs) -> object:
     def to_img(x: torch.FloatTensor) -> torch.FloatTensor:
         return x.clamp(0, 1)
 
@@ -26,7 +26,7 @@ def ViTVQCond(base_class: str, *args, **kwargs) -> object:
     return model
 
 
-def ViTVQSegmentation(base_class: str, n_labels: int, *args, **kwargs) -> object:
+def VQSegmentation(base_class: str, n_labels: int, *args, **kwargs) -> object:
     base_model_cls = get_obj_from_str(base_class)
     class Wrapper(base_model_cls):
         def __init__(self) -> None:

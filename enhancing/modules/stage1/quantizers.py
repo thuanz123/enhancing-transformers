@@ -81,7 +81,7 @@ class VectorQuantizer(BaseQuantizer):
             torch.einsum('b d, n d -> b n', z_reshaped_norm, embedding_norm)
 
         encoding_indices = torch.argmin(d, dim=1).unsqueeze(1)
-        encoding_indices = encoding_indices.view(*z.shape[:2])
+        encoding_indices = encoding_indices.view(*z.shape[:-1])
         
         z_q = self.embedding(encoding_indices).view(z.shape)
         z_qnorm, z_norm = self.norm(z_q), self.norm(z)
@@ -112,16 +112,16 @@ class GumbelQuantizer(BaseQuantizer):
         logits = - torch.sum(z_reshaped_norm ** 2, dim=1, keepdim=True) - \
                  torch.sum(embedding_norm ** 2, dim=1) + 2 * \
                  torch.einsum('b d, n d -> b n', z_reshaped_norm, embedding_norm)
-        logits =  logits.view(*z.shape[:2], -1).exp()
+        logits =  logits.view(*z.shape[:-1], -1).exp()
         
-        soft_one_hot = F.gumbel_softmax(logits, tau=temp, dim=2, hard=hard)
-        z_qnorm = torch.einsum('b t n, n d -> b t d', soft_one_hot, embedding_norm)
+        soft_one_hot = F.gumbel_softmax(logits, tau=temp, dim=-1, hard=hard)
+        z_qnorm = torch.matmul(soft_one_hot, embedding_norm)
         
         # kl divergence to the prior loss
-        probs =  F.norm(logits, p=1, dim=2)
-        loss = torch.sum(probs * torch.log(probs * self.n_embed + 1e-10), dim=2).mean()
+        probs =  F.normalize(logits, p=1, dim=-1)
+        loss = torch.sum(probs * torch.log(probs * self.n_embed), dim=-1).mean()
                
         # get encoding via argmax
-        encoding_indices = soft_one_hot.argmax(dim=2)
+        encoding_indices = soft_one_hot.argmax(dim=-1)
         
         return z_qnorm, loss, encoding_indices

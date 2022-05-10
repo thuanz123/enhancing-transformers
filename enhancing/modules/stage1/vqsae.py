@@ -16,12 +16,12 @@ import torch.nn as nn
 from torchvision import transforms as T
 import pytorch_lightning as pl
 
-from .layers import ViTEncoder as Encoder, ViTDecoder as Decoder
+from .layers import SequencerEncoder as Encoder, SequencerDecoder as Decoder
 from .quantizers import *
 from ...utils.general import get_obj_from_str, initialize_from_config
 
 
-class ViTVQ(pl.LightningModule):
+class VQModel(pl.LightningModule):
     def __init__(self, image_key: str, hparams: OmegaConf, qparams: OmegaConf,
                  loss: OmegaConf, path: Optional[str] = None, ignore_keys: List[str] = list()) -> None:
         super().__init__()
@@ -33,8 +33,8 @@ class ViTVQ(pl.LightningModule):
         self.encoder = Encoder(**hparams)
         self.decoder = Decoder(**hparams)
         self.quantizer = VectorQuantizer(**qparams)
-        self.pre_quant = nn.Linear(hparams.dim, qparams.embed_dim)
-        self.post_quant = nn.Linear(qparams.embed_dim, hparams.dim)
+        self.pre_quant = nn.Linear(hparams.dims[-1], qparams.embed_dim)
+        self.post_quant = nn.Linear(qparams.embed_dim, hparams.dims[-1])
 
         if path is not None:
             self.init_from_ckpt(path, ignore_keys)
@@ -166,7 +166,7 @@ class ViTVQ(pl.LightningModule):
         return log
 
 
-class ViTVQGumbel(ViTVQ):
+class VQGumbel(VQModel):
     def __init__(self, temperature_scheduler: OmegaConf,
                  image_key: str, hparams: OmegaConf, qparams: OmegaConf,
                  loss: OmegaConf, path: Optional[str] = None, ignore_keys: List[str] = list()) -> None:

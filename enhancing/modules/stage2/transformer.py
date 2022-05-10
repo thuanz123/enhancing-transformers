@@ -20,11 +20,13 @@ from ...utils.general import initialize_from_config
 
 
 class CondTransformer(pl.LightningModule):
-    def __init__(self, cond_key: str, cond: OmegaConf, stage1: OmegaConf, transformer: OmegaConf, path: Optional[str] = None, ignore_keys: List[str] = list()) -> None:
+    def __init__(self, cond_key: str, cond: OmegaConf, stage1: OmegaConf, transformer: OmegaConf,
+                 path: Optional[str] = None, ignore_keys: List[str] = list(), code_shape: List[int] = None) -> None:
         super().__init__()
         
-        # get condition key
+        # get condition key and code shape
         self.cond_key = cond_key
+        self.code_shape = code_shape
 
         # load condition model
         self.cond_model = initialize_from_config(cond)
@@ -52,6 +54,8 @@ class CondTransformer(pl.LightningModule):
                 codes: torch.LongTensor,
                 conds: torch.LongTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         
+        codes = codes.view(codes.shape[0], -1) if isinstance(self.transformer, GPT) \
+                else codes.view(codes.shape[0], -1, codes.shape[-1])
         conds = conds.view(conds.shape[0], -1)
         logits = self.transformer(codes, conds)
 
@@ -84,6 +88,9 @@ class CondTransformer(pl.LightningModule):
                                                 use_fp16=use_fp16)
 
         if return_pixels:
+            if self.code_shape is not None:
+                codes = codes.view(codes.shape[0], *self.code_shape)
+                
             return self.stage1_model.decode_codes(codes).clamp(0, 1)
         else:
             codes = codes.view(-1, codes.shape[-1])
