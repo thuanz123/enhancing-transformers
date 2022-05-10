@@ -54,8 +54,6 @@ class CondTransformer(pl.LightningModule):
                 codes: torch.LongTensor,
                 conds: torch.LongTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         
-        codes = codes.view(codes.shape[0], -1) if isinstance(self.transformer, GPT) \
-                else codes.view(codes.shape[0], -1, codes.shape[-1])
         conds = conds.view(conds.shape[0], -1)
         logits = self.transformer(codes, conds)
 

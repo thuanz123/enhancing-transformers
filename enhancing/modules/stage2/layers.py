@@ -174,6 +174,7 @@ class GPT(nn.Module):
                 codes: torch.LongTensor,
                 conds: torch.LongTensor) -> torch.FloatTensor:
         
+        codes = codes.view(codes.shape[0], -1)
         codes = self.tok_emb_code(codes)
         conds = self.tok_emb_cond(conds)
         
@@ -348,6 +349,7 @@ class RQTransformer(nn.Module):
                 codes: torch.LongTensor,
                 conds: torch.LongTensor) -> torch.FloatTensor:
         
+        codes = codes.view(codes.shape[0], -1, codes.shape[-1])
         codes = self.tok_emb_code(codes)
         conds = self.tok_emb_cond(conds)
 
