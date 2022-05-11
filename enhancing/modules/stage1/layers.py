@@ -33,12 +33,11 @@ class Downsample(nn.Module):
 class Upsample(nn.Module):
     def __init__(self, in_channel: int, out_channel: int, upscale: Union[int, Tuple[int, int]]) -> None:
         super().__init__()
-        self.upsample = nn.Upsample(scale_factor=upscale)
-        self.conv = nn.Conv2d(in_channel, out_channel, kernel_size=3, padding=1)
+        self.conv = nn.ConvTranspose2d(in_channel, out_channel, kernel_size=upscale, stride=upscale)
 
     def forward(self, x) -> torch.FloatTensor:
-        x = self.upsample(rearrange(x, 'b h w c -> b c h w'))
-        x = rearrange(self.conv(x), 'b c h w -> b h w c')
+        x = self.conv(rearrange(x, 'b h w c -> b c h w'))
+        x = rearrange(x, 'b c h w -> b h w c')
 
         return x
 
@@ -195,8 +194,7 @@ class ViTDecoder(nn.Module):
         self.de_pos_embedding = nn.Parameter(torch.randn(1, self.num_patches, dim))        
         self.to_pixel = nn.Sequential(OrderedDict([
             ('reshape', Rearrange('b (h w) c -> b c h w', h=image_height // patch_height)),
-            ('upsample', nn.Upsample(scale_factor=(patch_height, patch_width))),
-            ('conv_out', nn.Conv2d(dim, channels, kernel_size=3, padding=1))
+            ('conv_out', nn.ConvTranspose2d(dim, channels, kernel_size=patch_size, stride=patch_size))
         ]))
                                       
     def forward(self, token: torch.FloatTensor) -> torch.FloatTensor:
