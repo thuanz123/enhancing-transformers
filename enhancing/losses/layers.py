@@ -11,23 +11,23 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-def hinge_d_loss(logits_real: torch.FloatTensor, logits_fake: Optional[torch.FloatTensor] = None) -> torch.FloatTensor:
-    loss_real = F.relu(1. - logits_real).mean() if logits_fake is not None else -logits_real.mean() * 2
-    loss_fake = F.relu(1. + logits_fake).mean() if logits_fake is not None else 0
+def hinge_d_loss(logits_fake: torch.FloatTensor, logits_real: Optional[torch.FloatTensor] = None) -> torch.FloatTensor:
+    loss_fake = - loss_fake.mean() * 2 if logits_real is None else F.relu(1. + logits_fake).mean() 
+    loss_real = 0 if logits_real is None else F.relu(1. - logits_real).mean()
     
     return 0.5 * (loss_real + loss_fake)
 
 
-def vanilla_d_loss(logits_real: torch.FloatTensor, logits_fake: Optional[torch.FloatTensor] = None) -> torch.FloatTensor:
-    loss_real = -logits_real.sigmoid().log().mean() * (1 if logits_fake is not None else 2)
-    loss_fake = -(1 - logits_fake.sigmoid()).log().mean() if logits_fake is not None else 0
+def vanilla_d_loss(logits_fake: torch.FloatTensor, logits_real: Optional[torch.FloatTensor] = None) -> torch.FloatTensor:
+    loss_fake = - loss_fake.sigmoid().log().mean() * 2 if logits_real is None else - (1 - logits_fake.sigmoid()).log().mean() 
+    loss_real = 0 if logits_real is None else - logits_real.sigmoid().log().mean()
     
     return 0.5 * (loss_real + loss_fake)
 
 
-def least_square_d_loss(logits_real: torch.FloatTensor, logits_fake: Optional[torch.FloatTensor] = None) -> torch.FloatTensor:
-    loss_real = (1-logits_real).pow(2).mean() if logits_fake is not None else logits_real.pow(2).mean() * 2 
-    loss_fake = (1+logits_fake).pow(2).mean() if logits_fake is not None else 0
+def least_square_d_loss(logits_fake: torch.FloatTensor, logits_real: Optional[torch.FloatTensor] = None) -> torch.FloatTensor:
+    loss_fake = loss_fake.pow(2).mean() * 2 if logits_real is None else (1 + logits_fake).pow(2).mean()
+    loss_real = 0 if logits_real is None else (1 - logits_real).pow(2).mean() 
     
     return 0.5 * (loss_real + loss_fake)
 
