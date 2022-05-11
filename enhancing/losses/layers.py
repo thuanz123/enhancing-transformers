@@ -12,21 +12,21 @@ import torch.nn.functional as F
 
 
 def hinge_d_loss(logits_fake: torch.FloatTensor, logits_real: Optional[torch.FloatTensor] = None) -> torch.FloatTensor:
-    loss_fake = - loss_fake.mean() * 2 if logits_real is None else F.relu(1. + logits_fake).mean() 
+    loss_fake = - logits_fake.mean() * 2 if logits_real is None else F.relu(1. + logits_fake).mean() 
     loss_real = 0 if logits_real is None else F.relu(1. - logits_real).mean()
     
     return 0.5 * (loss_real + loss_fake)
 
 
 def vanilla_d_loss(logits_fake: torch.FloatTensor, logits_real: Optional[torch.FloatTensor] = None) -> torch.FloatTensor:
-    loss_fake = - loss_fake.sigmoid().log().mean() * 2 if logits_real is None else - (1 - logits_fake.sigmoid()).log().mean() 
+    loss_fake = - logits_fake.sigmoid().log().mean() * 2 if logits_real is None else - (1 - logits_fake.sigmoid()).log().mean() 
     loss_real = 0 if logits_real is None else - logits_real.sigmoid().log().mean()
     
     return 0.5 * (loss_real + loss_fake)
 
 
 def least_square_d_loss(logits_fake: torch.FloatTensor, logits_real: Optional[torch.FloatTensor] = None) -> torch.FloatTensor:
-    loss_fake = loss_fake.pow(2).mean() * 2 if logits_real is None else (1 + logits_fake).pow(2).mean()
+    loss_fake = logits_fake.pow(2).mean() * 2 if logits_real is None else (1 + logits_fake).pow(2).mean()
     loss_real = 0 if logits_real is None else (1 - logits_real).pow(2).mean() 
     
     return 0.5 * (loss_real + loss_fake)
