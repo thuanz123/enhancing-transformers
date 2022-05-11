@@ -20,8 +20,7 @@ class DummyLoss(nn.Module):
 
 
 class VQLPIPS(nn.Module):
-    def __init__(self, disc_start: int,
-                 codebook_weight: float = 1.0,
+    def __init__(self, codebook_weight: float = 1.0,
                  loglaplace_weight: float = 1.0,
                  loggaussian_weight: float = 1.0,
                  perceptual_weight: float = 1.0) -> None:
