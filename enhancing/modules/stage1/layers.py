@@ -33,11 +33,12 @@ class Downsample(nn.Module):
 class Upsample(nn.Module):
     def __init__(self, in_channel: int, out_channel: int, upscale: Union[int, Tuple[int, int]]) -> None:
         super().__init__()
-        self.conv = nn.ConvTranspose2d(in_channel, out_channel, kernel_size=upscale, stride=upscale)
+        self.up = nn.Upsample(scale_factor=upscale)
+        self.conv = nn.Conv2d(in_channel, out_channel, kernel_size=3, padding=1)
 
     def forward(self, x) -> torch.FloatTensor:
-        x = self.conv(rearrange(x, 'b h w c -> b c h w'))
-        x = rearrange(x, 'b c h w -> b h w c')
+        x = self.up(rearrange(x, 'b h w c -> b c h w'))
+        x = rearrange(self.conv(x), 'b c h w -> b h w c')
 
         return x
 
