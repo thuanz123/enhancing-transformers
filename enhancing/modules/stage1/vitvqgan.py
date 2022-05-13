@@ -165,7 +165,7 @@ class ViTVQ(pl.LightningModule):
                           list(self.post_quant.named_parameters()) + \
                           list(self.quantizer.named_parameters())
         
-        whitelist_weight_modules = (torch.nn.Linear, torch.nn.Conv2d)
+        whitelist_weight_modules = (torch.nn.Linear, torch.nn.Conv2d, torch.nn.ConvTranspose2d)
         blacklist_weight_modules = (torch.nn.LayerNorm, torch.nn.Embedding)
         
         for mn, m in list_modules:
