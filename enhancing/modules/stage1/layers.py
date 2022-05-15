@@ -85,7 +85,7 @@ class Attention(nn.Module):
         q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.heads), qkv)
 
         attn = torch.matmul(q, k.transpose(-1, -2)) * self.scale
-        attn = self.attend(dots)
+        attn = self.attend(attn)
 
         out = torch.matmul(attn, v)
         out = rearrange(out, 'b h n d -> b n (h d)')
