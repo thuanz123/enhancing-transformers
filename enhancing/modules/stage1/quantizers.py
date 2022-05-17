@@ -7,6 +7,7 @@
 # Copyright (c) 2020 Patrick Esser and Robin Rombach and Björn Ommer. All Rights Reserved.
 # ------------------------------------------------------------------------------------
 
+import math
 from functools import partial
 from typing import Tuple, Optional
 
@@ -119,7 +120,7 @@ class GumbelQuantizer(BaseQuantizer):
         
         # kl divergence to the prior loss
         logits =  F.log_softmax(logits, dim=-1) # use log_softmax because it is more numerically stable
-        loss = torch.sum(logits.exp() * (logits+torch.log(self.n_embed)), dim=-1).mean()
+        loss = torch.sum(logits.exp() * (logits+math.log(self.n_embed)), dim=-1).mean()
                
         # get encoding via argmax
         encoding_indices = soft_one_hot.argmax(dim=-1)
