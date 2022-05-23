@@ -230,18 +230,22 @@ class ViTVQ(pl.LightningModule):
 
 
 class ViTVQGumbel(ViTVQ):
-    def __init__(self, temperature_scheduler: OmegaConf, image_key: str, hparams: OmegaConf, qparams: OmegaConf,
-                 loss: OmegaConf, path: Optional[str] = None, ignore_keys: List[str] = list(), scheduler: Optional[OmegaConf] = None) -> None:
+    def __init__(self, image_key: str, hparams: OmegaConf, qparams: OmegaConf, loss: OmegaConf,
+                 path: Optional[str] = None, ignore_keys: List[str] = list(),
+                 temperature_scheduler: OmegaConf = None, scheduler: Optional[OmegaConf] = None) -> None:
         super().__init__(image_key, hparams, qparams, loss, None, None)
 
-        self.temperature_scheduler = initialize_from_config(temperature_scheduler)
+        self.temperature_scheduler = initialize_from_config(temperature_scheduler) \
+                                     if temperature_scheduler else None
         self.quantizer = GumbelQuantizer(**qparams)
 
         if path is not None:
             self.init_from_ckpt(path, ignore_keys)
 
     def training_step(self, batch: Tuple[Any, Any], batch_idx: int, optimizer_idx: int = 0) -> torch.FloatTensor:
-        self.quantizer.temperature = self.temperature_scheduler(self.global_step)
+        if self.temperature_scheduler:
+            self.quantizer.temperature = self.temperature_scheduler(self.global_step)
+
         loss = super().training_step(batch, batch_idx, optimizer_idx)
         
         if optimizer_idx == 0:
