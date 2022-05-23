@@ -11,8 +11,6 @@ model:
             target: enhancing.modules.stage1.vitvqgan.ViTVQGumbel
             params:
                 image_key: image
-                temperature_scheduler:
-                    target: enhancing.utils.scheduler.DummyScheduler
                 hparams:
                     image_size: 256
                     patch_size: 16
