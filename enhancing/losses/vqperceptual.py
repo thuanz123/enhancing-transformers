@@ -64,7 +64,8 @@ class VQLPIPSWithDiscriminator(nn.Module):
                  loglaplace_weight: float = 1.0,
                  loggaussian_weight: float = 1.0,
                  perceptual_weight: float = 1.0,
-                 adversarial_weight: float = 1.0) -> None:
+                 adversarial_weight: float = 1.0
+                 use_adaptive_adv: bool = True) -> None:
         
         super().__init__()
         assert disc_loss in ["hinge", "vanilla", "least_square"], f"Unknown GAN loss '{disc_loss}'."
@@ -85,16 +86,17 @@ class VQLPIPSWithDiscriminator(nn.Module):
             self.disc_loss = least_square_d_loss
 
         self.adversarial_weight = adversarial_weight
+        self.use_adaptive_adv = use_adaptive_adv
 
-    def calculate_adaptive_weight(self, nll_loss: torch.FloatTensor,
+    def calculate_adaptive_factor(self, nll_loss: torch.FloatTensor,
                                   g_loss: torch.FloatTensor, last_layer: nn.Module) -> torch.FloatTensor:
         nll_grads = torch.autograd.grad(nll_loss, last_layer, retain_graph=True)[0]
         g_grads = torch.autograd.grad(g_loss, last_layer, retain_graph=True)[0]
         
-        d_weight = torch.norm(nll_grads) / (torch.norm(g_grads) + 1e-4)
-        d_weight = d_weight.clamp(0.0, 1e4).detach() * self.adversarial_weight
+        adapt_factor = torch.norm(nll_grads) / (torch.norm(g_grads) + 1e-4)
+        adapt_factor = adapt_factor.clamp(0.0, 1e4).detach()
 
-        return d_weight
+        return adapt_factor
 
     def forward(self, codebook_loss: torch.FloatTensor, inputs: torch.FloatTensor, reconstructions: torch.FloatTensor,
                 optimizer_idx: int, global_step: int, last_layer: Optional[nn.Module] = None, split: Optional[str] = "train") -> Tuple:
@@ -114,7 +116,10 @@ class VQLPIPSWithDiscriminator(nn.Module):
             g_loss = self.disc_loss(logits_fake)
             
             try:
-                d_weight = self.calculate_adaptive_weight(nll_loss, g_loss, last_layer=last_layer)
+                d_weight = self.adversarial_weight
+                
+                if self.use_adaptive_adv:
+                    d_weight *= self.calculate_adaptive_factor(nll_loss, g_loss, last_layer=last_layer)
             except RuntimeError:
                 assert not self.training
                 d_weight = torch.tensor(0.0)
