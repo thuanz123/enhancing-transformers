@@ -192,7 +192,7 @@ class EqualLinear(nn.Module):
         out = F.linear(input, self.weight * self.scale, bias=self.bias * self.lr_mul)
 
         if self.activation:
-            out = F.leaky_relu(out, negative_slope=0.2) * 2**0.5
+            out = F.leaky_relu(out, negative_slope=0.2) * sqrt(2)
 
         return out
 
@@ -292,12 +292,10 @@ class PatchDiscriminator(nn.Module):
 
 
 class StyleDiscriminator(nn.Module):
-    def __init__(self, image_size:int = 256, network_capacity: int = 16, transparent: bool = False, fmap_max: int = 512):
+    def __init__(self, image_size:int = 256, network_capacity: int = 16, fmap_max: int = 512):
         super().__init__()
         num_layers = int(log2(image_size) - 1)
-        num_init_filters = 3 if not transparent else 4
-        blocks = []
-        filters = [num_init_filters] + [(network_capacity * 4) * (2 ** i) for i in range(num_layers + 1)]
+        filters = [3] + [(network_capacity * 4) * (2 ** i) for i in range(num_layers + 1)]
 
         set_fmap_max = partial(min, fmap_max)
         filters = list(map(set_fmap_max, filters))
@@ -305,10 +303,9 @@ class StyleDiscriminator(nn.Module):
 
         blocks = []
         for ind, (in_chan, out_chan) in enumerate(chan_in_out):
-            num_layer = ind + 1
             is_not_last = ind != (len(chan_in_out) - 1)
 
-            block = StyleBlock(in_chan, out_chan, downsample = is_not_last)
+            block = StyleBlock(in_chan, out_chan, downsample=is_not_last)
             blocks.append(block)
         self.blocks = nn.Sequential(*blocks)
 

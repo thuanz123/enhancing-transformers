@@ -57,6 +57,7 @@ Training is easy with one line:
     - [x] Add ViT-based encoder and decoder
     - [x] Add factorized codes
     - [x] Add l<sub>2</sub>-normalized codes
+    - [x] Replace PatchGAN discriminator with StyleGAN one
 - [x] Add RQ-VAE
     - [x] Add Residual Quantizer
     - [x] Add RQ-Transformer
