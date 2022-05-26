@@ -2,6 +2,10 @@
 # Modified from Taming Transformers (https://github.com/CompVis/taming-transformers)
 # Copyright (c) 2020 Patrick Esser and Robin Rombach and Björn Ommer. All Rights Reserved.
 # ------------------------------------------------------------------------------------
+# Modified from StyleGAN-Pytorch (https://github.com/lucidrains/stylegan2-pytorch)
+# Copyright (c) 2020 Phil Wang. All Rights Reserved.
+# ------------------------------------------------------------------------------------
+
 
 from math import log2, sqrt
 from functools import partial
