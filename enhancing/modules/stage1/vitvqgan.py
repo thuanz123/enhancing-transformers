@@ -206,10 +206,12 @@ class ViTVQ(pl.LightningModule):
             optimizers.append(torch.optim.AdamW(self.loss.discriminator.parameters(), lr=lr, betas=(0.9, 0.99), weight_decay=1e-4))
 
         if self.scheduler is not None:
+            self.scheduler.params.start = lr
             scheduler = initialize_from_config(self.scheduler)
+            
             schedulers = [
                 {
-                    'scheduler': lr_scheduler.LambdaLR(optimizer, lr_lambda= lambda n: scheduler.schedule(n)/lr),
+                    'scheduler': lr_scheduler.LambdaLR(optimizer, lr_lambda=scheduler.schedule),
                     'interval': 'step',
                     'frequency': 1
                 } for optimizer in optimizers

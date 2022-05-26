@@ -18,6 +18,8 @@ class BaseScheduler:
         pass
 
     def __call__(self, n: int) -> float:
+        assert hasattr(self, start)
+        
         return self.schedule(n)
 
 
@@ -36,7 +38,7 @@ class ExponentialDecayScheduler(BaseScheduler):
             res = np.exp(-self.scale_factor*n) * self.start
             self.current = max(self.end, res)
             
-        return self.current
+        return self.current / self.start
 
 
 class LambdaWarmUpCosineScheduler(BaseScheduler):
@@ -61,7 +63,7 @@ class LambdaWarmUpCosineScheduler(BaseScheduler):
             res = self.min_ + 0.5 * (self.max_ - self.min_) * (1 + np.cos(t * np.pi))
             self.last = res
     
-        return res
+        return res / self.start
     
 
 class LambdaWarmUpLinearScheduler(BaseScheduler):
@@ -84,4 +86,4 @@ class LambdaWarmUpLinearScheduler(BaseScheduler):
             res = self.min_ + (self.max_ - self.min_) * (max_decay_steps - n) / max_decay_steps
             self.last = res
     
-        return res
+        return res / self.start
