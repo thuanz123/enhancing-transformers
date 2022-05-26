@@ -64,7 +64,7 @@ class VQLPIPSWithDiscriminator(nn.Module):
                  loglaplace_weight: float = 1.0,
                  loggaussian_weight: float = 1.0,
                  perceptual_weight: float = 1.0,
-                 adversarial_weight: float = 1.0
+                 adversarial_weight: float = 1.0,
                  use_adaptive_adv: bool = True) -> None:
         
         super().__init__()

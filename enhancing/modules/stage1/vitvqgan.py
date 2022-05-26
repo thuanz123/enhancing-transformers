@@ -29,6 +29,7 @@ class ViTVQ(pl.LightningModule):
         self.path = path
         self.ignore_keys = ignore_keys 
         self.image_key = image_key
+        self.scheduler = scheduler 
         
         self.loss = initialize_from_config(loss)
         self.encoder = Encoder(**hparams)
@@ -36,8 +37,6 @@ class ViTVQ(pl.LightningModule):
         self.quantizer = VectorQuantizer(**qparams)
         self.pre_quant = nn.Linear(hparams.dim, qparams.embed_dim)
         self.post_quant = nn.Linear(qparams.embed_dim, hparams.dim)
-
-        self.scheduler = initialize_from_config(scheduler) if scheduler else None
 
         if path is not None:
             self.init_from_ckpt(path, ignore_keys)
@@ -207,9 +206,10 @@ class ViTVQ(pl.LightningModule):
             optimizers.append(torch.optim.AdamW(self.loss.discriminator.parameters(), lr=lr, betas=(0.9, 0.99), weight_decay=1e-4))
 
         if self.scheduler is not None:
-            scheduler = [
+            scheduler = initialize_from_config(self.scheduler)
+            schedulers = [
                 {
-                    'scheduler': lr_scheduler.LambdaLR(optimizer, lr_lambda=self.scheduler.schedule),
+                    'scheduler': lr_scheduler.LambdaLR(optimizer, lr_lambda= lambda n: scheduler.schedule(n)/lr),
                     'interval': 'step',
                     'frequency': 1
                 } for optimizer in optimizers
