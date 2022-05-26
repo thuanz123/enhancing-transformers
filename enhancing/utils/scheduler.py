@@ -18,9 +18,9 @@ class BaseScheduler:
         pass
 
     def __call__(self, n: int) -> float:
-        assert hasattr(self, start)
+        assert hasattr(self, 'start')
         
-        return self.schedule(n)
+        return self.schedule(n) * self.start
 
 
 class ExponentialDecayScheduler(BaseScheduler):
