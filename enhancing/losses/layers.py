@@ -284,6 +284,8 @@ class PatchDiscriminator(nn.Module):
             nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw)]  # output 1 channel prediction map
         self.main = nn.Sequential(*sequence)
 
+        self.apply(weights_init)
+
     def forward(self, input: torch.FloatTensor) -> torch.FloatTensor:
         """Standard forward."""
         return self.main(input)
