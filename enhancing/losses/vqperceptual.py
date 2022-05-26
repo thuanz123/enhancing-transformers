@@ -76,7 +76,7 @@ class VQLPIPSWithDiscriminator(nn.Module):
         self.loggaussian_weight = loggaussian_weight
         self.perceptual_weight = perceptual_weight 
 
-        self.discriminator = NLayerDiscriminator(**disc_params).apply(weights_init)
+        self.discriminator = StyleDiscriminator(**disc_params).apply(weights_init)
         self.discriminator_iter_start = disc_start
         if disc_loss == "hinge":
             self.disc_loss = hinge_d_loss

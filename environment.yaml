@@ -20,3 +20,4 @@ dependencies:
     - tensorboard==2.8.0
     - git+https://github.com/openai/CLIP.git
     - albumentations==0.4.3
+    - kornia==0.5.11

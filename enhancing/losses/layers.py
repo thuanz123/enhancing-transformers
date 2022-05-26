@@ -3,12 +3,14 @@
 # Copyright (c) 2020 Patrick Esser and Robin Rombach and Björn Ommer. All Rights Reserved.
 # ------------------------------------------------------------------------------------
 
-import functools
-from typing import Optional, Union, Tuple
+from math import log2, sqrt
+from functools import partial
+from typing import Optional, Union, Tuple, List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from kornia.filters import filter2d
 
 
 def hinge_d_loss(logits_fake: torch.FloatTensor, logits_real: Optional[torch.FloatTensor] = None) -> torch.FloatTensor:
@@ -39,7 +41,7 @@ def weights_init(m: nn.Module) -> None:
     elif classname.find('BatchNorm') != -1:
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
-        
+
 
 class ActNorm(nn.Module):
     def __init__(self, num_features: int,
@@ -129,7 +131,112 @@ class ActNorm(nn.Module):
         return h
 
 
-class NLayerDiscriminator(nn.Module):
+class EqualConv2d(nn.Module):
+    def __init__(self, in_channel: int, out_channel: int,
+                 kernel_size: int, stride: int = 1,
+                 padding: int = 0, bias: bool = True,
+                 activation: bool = False) -> None:
+        super().__init__()
+
+        self.weight = nn.Parameter(
+            torch.randn(out_channel, in_channel, kernel_size, kernel_size)
+        )
+        self.scale = 1 / sqrt(in_channel * kernel_size ** 2)
+
+        self.stride = stride
+        self.padding = padding
+
+        if bias:
+            self.bias = nn.Parameter(torch.zeros(out_channel))
+
+        else:
+            self.bias = None
+
+        self.activation = activation
+
+    def forward(self, input: torch.FloatTensor) -> torch.FloatTensor:
+        out = F.conv2d(
+            input,
+            self.weight * self.scale,
+            bias=self.bias,
+            stride=self.stride,
+            padding=self.padding,
+        )
+
+        if self.activation:
+            out = F.leaky_relu(out, negative_slope=0.2) * 2**0.5
+
+        return out
+
+
+class EqualLinear(nn.Module):
+    def __init__(self, in_dim: int, out_dim: int,
+                 bias: bool = True, bias_init: float = 0,
+                 lr_mul: float = 1, activation: bool = False):
+        super().__init__()
+
+        self.weight = nn.Parameter(torch.randn(out_dim, in_dim).div_(lr_mul))
+
+        if bias:
+            self.bias = nn.Parameter(torch.zeros(out_dim).fill_(bias_init))
+
+        else:
+            self.bias = None
+
+        self.activation = activation
+
+        self.scale = (1 / sqrt(in_dim)) * lr_mul
+        self.lr_mul = lr_mul
+
+    def forward(self, input: torch.FloatTensor) -> torch.FloatTensor:
+        out = F.linear(input, self.weight * self.scale, bias=self.bias * self.lr_mul)
+
+        if self.activation:
+            out = F.leaky_relu(out, negative_slope=0.2) * 2**0.5
+
+        return out
+
+
+class Blur(nn.Module):
+    def __init__(self, blur_kernel: List[int]) -> None:
+        super().__init__()
+        self.register_buffer('kernel', torch.Tensor(blur_kernel))
+        
+    def forward(self, input: torch.FloatTensor) -> torch.FloatTensor:
+        kernel = self.kernel
+        kernel = kernel[None, None, :] * kernel[None, :, None]
+
+        return filter2d(input, kernel, normalized=True)
+
+
+class StyleBlock(nn.Module):
+    def __init__(self, input_channels, filters, downsample=True):
+        super().__init__()
+        self.conv_res = EqualConv2d(input_channels, filters, 1, stride = (2 if downsample else 1))
+
+        self.net = nn.Sequential(
+            EqualConv2d(input_channels, filters, 3, padding=1, activation=True),
+            EqualConv2d(filters, filters, 3, padding=1, activation=True),
+        )
+
+        self.downsample = nn.Sequential(
+            Blur([1,3,3,1]),
+            EqualConv2d(filters, filters, 3, padding = 1, stride = 2)
+        ) if downsample else None
+
+    def forward(self, x):
+        res = self.conv_res(x)
+        x = self.net(x)
+        
+        if self.downsample is not None:
+            x = self.downsample(x)
+            
+        x = (x + res) * (1 / sqrt(2))
+
+        return x
+
+
+class PatchDiscriminator(nn.Module):
     """Defines a PatchGAN discriminator as in Pix2Pix
         --> see https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/models/networks.py
     """
@@ -141,12 +248,12 @@ class NLayerDiscriminator(nn.Module):
             n_layers (int)  -- the number of conv layers in the discriminator
             norm_layer      -- normalization layer
         """
-        super(NLayerDiscriminator, self).__init__()
+        super().__init__()
         if not use_actnorm:
             norm_layer = nn.BatchNorm2d
         else:
             norm_layer = ActNorm
-        if type(norm_layer) == functools.partial:  # no need to use bias as BatchNorm2d has affine parameters
+        if type(norm_layer) == partial:  # no need to use bias as BatchNorm2d has affine parameters
             use_bias = norm_layer.func != nn.BatchNorm2d
         else:
             use_bias = norm_layer != nn.BatchNorm2d
@@ -180,3 +287,41 @@ class NLayerDiscriminator(nn.Module):
     def forward(self, input: torch.FloatTensor) -> torch.FloatTensor:
         """Standard forward."""
         return self.main(input)
+
+
+class StyleDiscriminator(nn.Module):
+    def __init__(self, image_size:int = 256, network_capacity: int = 16, transparent: bool = False, fmap_max: int = 512):
+        super().__init__()
+        num_layers = int(log2(image_size) - 1)
+        num_init_filters = 3 if not transparent else 4
+
+        blocks = []
+        filters = [num_init_filters] + [(network_capacity * 4) * (2 ** i) for i in range(num_layers + 1)]
+
+        set_fmap_max = partial(min, fmap_max)
+        filters = list(map(set_fmap_max, filters))
+        chan_in_out = list(zip(filters[:-1], filters[1:]))
+
+        blocks = []
+        for ind, (in_chan, out_chan) in enumerate(chan_in_out):
+            num_layer = ind + 1
+            is_not_last = ind != (len(chan_in_out) - 1)
+
+            block = StyleBlock(in_chan, out_chan, downsample = is_not_last)
+            blocks.append(block)
+        self.blocks = nn.Sequential(*blocks)
+        
+        chan_last = filters[-1]
+        latent_dim = 2 * 2 * chan_last
+
+        self.final_conv = EqualConv2d(chan_last, chan_last, 3, padding=1, activation=True)
+        self.final_linear = nn.Sequential(
+            EqualLinear(chan_last * 2 * 2, chan_last, activation=True),
+            EqualLinear(chan_last, 1),
+        )
+
+    def forward(self, x):
+        x = self.final_conv(self.blocks(x))
+        x = self.final_linear(x.view(x.shape[0], -1))
+             
+        return x.squeeze()
