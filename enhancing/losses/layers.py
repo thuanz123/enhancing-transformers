@@ -294,7 +294,6 @@ class StyleDiscriminator(nn.Module):
         super().__init__()
         num_layers = int(log2(image_size) - 1)
         num_init_filters = 3 if not transparent else 4
-
         blocks = []
         filters = [num_init_filters] + [(network_capacity * 4) * (2 ** i) for i in range(num_layers + 1)]
 
@@ -310,14 +309,11 @@ class StyleDiscriminator(nn.Module):
             block = StyleBlock(in_chan, out_chan, downsample = is_not_last)
             blocks.append(block)
         self.blocks = nn.Sequential(*blocks)
-        
-        chan_last = filters[-1]
-        latent_dim = 2 * 2 * chan_last
 
-        self.final_conv = EqualConv2d(chan_last, chan_last, 3, padding=1, activation=True)
+        self.final_conv = EqualConv2d(filters[-1], filters[-1], 3, padding=1, activation=True)
         self.final_linear = nn.Sequential(
-            EqualLinear(chan_last * 2 * 2, chan_last, activation=True),
-            EqualLinear(chan_last, 1),
+            EqualLinear(filters[-1] * 2 * 2, filters[-1], activation=True),
+            EqualLinear(filters[-1], 1),
         )
 
     def forward(self, x):
