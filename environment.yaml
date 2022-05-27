@@ -13,11 +13,11 @@ dependencies:
     - ftfy==6.1.1
     - lpips==0.1.4
     - regex==2021.10.8
-    - pytorch-lightning==1.0.8
+    - pytorch-lightning==1.6.3
     - einops==0.3.0
     - omegaconf==2.0.0
     - lmdb==1.0.0
-    - tensorboard==2.8.0
+    - wandb==0.12.7
     - git+https://github.com/openai/CLIP.git
     - albumentations==0.4.3
     - kornia==0.5.11

@@ -108,6 +108,8 @@ class ViTVQ(pl.LightningModule):
                                             last_layer=self.decoder.get_last_layer(), split="train")
 
             self.log("train/total_loss", aeloss, prog_bar=True, logger=True, on_step=True, on_epoch=True)
+            del log_dict_ae["train/total_loss"]
+            
             self.log_dict(log_dict_ae, prog_bar=False, logger=True, on_step=True, on_epoch=True)
 
             return aeloss
@@ -117,7 +119,9 @@ class ViTVQ(pl.LightningModule):
             discloss, log_dict_disc = self.loss(qloss, x, xrec, optimizer_idx, self.global_step,
                                                 last_layer=self.decoder.get_last_layer(), split="train")
             
-            self.log("train/discloss", discloss, prog_bar=True, logger=True, on_step=True, on_epoch=True)
+            self.log("train/disc_loss", discloss, prog_bar=True, logger=True, on_step=True, on_epoch=True)
+            del log_dict_disc["train/disc_loss"]
+            
             self.log_dict(log_dict_disc, prog_bar=False, logger=True, on_step=True, on_epoch=True)
             
             return discloss
@@ -131,10 +135,13 @@ class ViTVQ(pl.LightningModule):
         discloss, log_dict_disc = self.loss(qloss, x, xrec, 1, self.global_step,
                                             last_layer=self.decoder.get_last_layer(), split="val")
         rec_loss = log_dict_ae["val/rec_loss"]
-        self.log("val/rec_loss", rec_loss,
-                 prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True)
-        self.log("val/total_loss", aeloss,
-                 prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True)
+
+        self.log("val/rec_loss", rec_loss, prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True)
+        self.log("val/total_loss", aeloss, prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True)
+
+        del log_dict_ae["val/rec_loss"]
+        del log_dict_ae["val/total_loss"]
+        
         self.log_dict(log_dict_ae)
         self.log_dict(log_dict_disc)
 

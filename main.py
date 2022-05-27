@@ -44,7 +44,7 @@ if __name__ == '__main__':
     # Build data modules
     data = initialize_from_config(config.dataset)
     data.prepare_data()
-    data.setup()
+    #data.setup()
     
     # Build trainer
     trainer = pl.Trainer(max_epochs=exp_config.epochs,

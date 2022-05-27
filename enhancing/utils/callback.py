@@ -4,6 +4,7 @@
 # ------------------------------------------------------------------------------------
 
 import os
+import wandb
 import numpy as np
 from PIL import Image
 from pathlib import Path
@@ -43,10 +44,34 @@ class ImageLogger(Callback):
         super().__init__()
         self.batch_freq = batch_frequency
         self.max_images = max_images
+        self.logger_log_images = {
+            pl.loggers.WandbLogger: self._wandb,
+            pl.loggers.TestTubeLogger: self._testtube,
+        }
         self.log_steps = [2 ** n for n in range(int(np.log2(self.batch_freq)) + 1)]
         if not increase_log_steps:
             self.log_steps = [self.batch_freq]
         self.clamp = clamp
+
+    @rank_zero_only
+    def _wandb(self, pl_module, images, batch_idx, split):
+        #raise ValueError("No way wandb")
+        grids = dict()
+        for k in images:
+            grid = torchvision.utils.make_grid(images[k])
+            grids[f"{split}/{k}"] = wandb.Image(grid)
+        pl_module.logger.experiment.log(grids)
+
+    @rank_zero_only
+    def _testtube(self, pl_module, images, batch_idx, split):
+        for k in images:
+            grid = torchvision.utils.make_grid(images[k])
+            grid = (grid+1.0)/2.0 # -1,1 -> 0,1; c,h,w
+
+            tag = f"{split}/{k}"
+            pl_module.logger.experiment.add_image(
+                tag, grid,
+                global_step=pl_module.global_step)
 
     @rank_zero_only
     def log_local(self, save_dir: str, split: str, images: Dict,
@@ -91,6 +116,9 @@ class ImageLogger(Callback):
             self.log_local(pl_module.logger.save_dir, split, images,
                            pl_module.global_step, pl_module.current_epoch, batch_idx)
 
+            logger_log_images = self.logger_log_images.get(logger, lambda *args, **kwargs: None)
+            logger_log_images(pl_module, images, pl_module.global_step, split)
+
             if is_train:
                 pl_module.train()
 
@@ -104,10 +132,10 @@ class ImageLogger(Callback):
         return False
 
     def on_train_batch_end(self, trainer: pl.trainer.Trainer, pl_module: pl.LightningModule,
-                           outputs, batch, batch_idx, dataloader_idx):
+                           outputs: Generic, batch: Tuple[torch.LongTensor, torch.FloatTensor], batch_idx: int) -> None:
         self.log_img(pl_module, batch, batch_idx, split="train")
 
     def on_validation_batch_end(self, trainer: pl.trainer.Trainer, pl_module: pl.LightningModule,
                                 outputs: Generic, batch: Tuple[torch.LongTensor, torch.FloatTensor],
-                                batch_idx: int, dataloader_idx: int):
+                                dataloader_idx: int, batch_idx: int) -> None:
         self.log_img(pl_module, batch, batch_idx, split="val")

@@ -14,7 +14,7 @@ from datetime import datetime
 
 import torch
 from pytorch_lightning.callbacks import ModelCheckpoint, Callback
-from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.loggers import WandbLogger
 
 from .callback import *
 
@@ -40,7 +40,7 @@ def initialize_from_config(config: OmegaConf) -> object:
     return get_obj_from_str(config["target"])(**config.get("params", dict()))
 
 
-def setup_callbacks(exp_config: OmegaConf, config: OmegaConf) -> Tuple[List[Callback], TensorBoardLogger]:
+def setup_callbacks(exp_config: OmegaConf, config: OmegaConf) -> Tuple[List[Callback], WandbLogger]:
     now = datetime.now().strftime('%d%m%Y_%H%M%S')
     basedir = pathlib.Path("experiments", exp_config.name, now)
     os.makedirs(basedir, exist_ok=True)
@@ -53,7 +53,8 @@ def setup_callbacks(exp_config: OmegaConf, config: OmegaConf) -> Tuple[List[Call
         save_top_k=-1,
         verbose=False,
     )
-    logger = TensorBoardLogger(save_dir=setup_callback.logdir, name=exp_config.name)
+    os.makedirs(setup_callback.logdir/'wandb', exist_ok=True)
+    logger = WandbLogger(save_dir=str(setup_callback.logdir), name=exp_config.name+"_"+str(now))
     logger_img_callback = ImageLogger(exp_config.batch_frequency, exp_config.max_images)
     
     return [setup_callback, checkpoint_callback, logger_img_callback], logger
