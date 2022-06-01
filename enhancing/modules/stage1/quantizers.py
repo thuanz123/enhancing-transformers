@@ -88,8 +88,8 @@ class VectorQuantizer(BaseQuantizer):
         z_qnorm, z_norm = self.norm(z_q), self.norm(z)
         
         # compute loss for embedding
-        loss = torch.mean((z_qnorm.detach() - z_norm)**2) +  \
-               self.beta * torch.mean((z_qnorm - z_norm.detach())**2)
+        loss = self.beta * torch.mean((z_qnorm.detach() - z_norm)**2) +  \
+               torch.mean((z_qnorm - z_norm.detach())**2)
 
         return z_qnorm, loss, encoding_indices
 
