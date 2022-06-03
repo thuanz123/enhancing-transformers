@@ -20,7 +20,7 @@ class NaturalTrain(INaturalist):
             T.ToTensor()
         ])
         
-        super().__init__(root=root, version='2021_train_mini', transform=transform)
+        super().__init__(root=root, version='2021_train_mini', transform=transform,download=True)
         
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         image, target = super().__getitem__(index)
@@ -35,7 +35,7 @@ class NaturalValidation(INaturalist):
             T.ToTensor()
         ])
         
-        super().__init__(root=root, version='2021_valid', transform=transform)
+        super().__init__(root=root, version='2021_valid', transform=transform,download=True)
         
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         image, target = super().__getitem__(index)
