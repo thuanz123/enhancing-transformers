@@ -199,8 +199,8 @@ class ViTDecoder(nn.Module):
         ]))
                                       
     def forward(self, token: torch.FloatTensor) -> torch.FloatTensor:
+        token += self.de_pos_embedding
         x = self.transformer(token)
-        x += self.de_pos_embedding
 
         return self.to_pixel(x)
 
