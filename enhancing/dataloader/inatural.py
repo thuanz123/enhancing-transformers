@@ -11,17 +11,6 @@ from torchvision.datasets import ImageFolder
 from torchvision.datasets import INaturalist
 
 
-# class NaturalBase(ImageFolder):
-#     def __init__(self, root: str, split: str,
-#                  transform: Callable) -> None:
-#         super().__init__(root, transform)
-        
-#     def __getitem__(self, index: int) -> Tuple[Any, Any]:
-#         image, target = super().__getitem__(index)
-#         return {'image': image, 'class': torch.tensor([target])}
-        
-
-
 class NaturalTrain(INaturalist):
     def __init__(self, root: str, resolution: Union[Tuple[int, int], int] = 256) -> None:
         transform = T.Compose([
@@ -31,8 +20,12 @@ class NaturalTrain(INaturalist):
             T.ToTensor()
         ])
         
-        super().__init__(root=root, version='2021_train_mini', transform=transform, download=True)
+        super().__init__(root=root, version='2021_train_mini', transform=transform)
         
+    def __getitem__(self, index: int) -> Tuple[Any, Any]:
+        image, target = super().__getitem__(index)
+        return {'image': image, 'class': torch.tensor([target])}
+       
 
 class NaturalValidation(INaturalist):
     def __init__(self, root: str, resolution: Union[Tuple[int, int], int] = 256) -> None:
@@ -42,4 +35,8 @@ class NaturalValidation(INaturalist):
             T.ToTensor()
         ])
         
-        super().__init__(root=root, version='2021_valid', transform=transform, download=True)
+        super().__init__(root=root, version='2021_valid', transform=transform)
+        
+    def __getitem__(self, index: int) -> Tuple[Any, Any]:
+        image, target = super().__getitem__(index)
+        return {'image': image, 'class': torch.tensor([target])}

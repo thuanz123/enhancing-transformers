@@ -108,16 +108,15 @@ class VQLPIPSWithDiscriminator(nn.Module):
         perceptual_loss = self.perceptual_loss(inputs*2-1, reconstructions*2-1).mean()
 
         nll_loss = self.loglaplace_weight * loglaplace_loss + self.loggaussian_weight * loggaussian_loss + self.perceptual_weight * perceptual_loss
-        
+
         # now the GAN part
         if optimizer_idx == 0:
             # generator update
             logits_fake = self.discriminator(reconstructions)
             g_loss = self.disc_loss(logits_fake)
-            
+
             try:
-                d_weight = torch.tensor(self.adversarial_weight)
-                
+                d_weight = torch.tensor(self.adversarial_weight).to(nll_loss.device)
                 if self.use_adaptive_adv:
                     d_weight *= self.calculate_adaptive_factor(nll_loss, g_loss, last_layer=last_layer)
             except RuntimeError:

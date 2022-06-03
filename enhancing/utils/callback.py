@@ -33,10 +33,10 @@ class SetupCallback(Callback):
             os.makedirs(self.ckptdir, exist_ok=True)
             
             print("Experiment config")
-            print(self.exp_config.pretty())
+            # print(self.exp_config.pretty())
 
             print("Model config")
-            print(self.config.pretty())
+            # print(self.config.pretty())
             
             
 class ImageLogger(Callback):
