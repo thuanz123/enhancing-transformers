@@ -19,8 +19,12 @@ class NaturalTrain(INaturalist):
             T.RandomHorizontalFlip(),
             T.ToTensor()
         ])
-        
-        super().__init__(root=root, version='2021_train_mini', transform=transform,download=True)
+        version  = '2021_train_mini'
+        if not os.path.isdir('data/'+version): 
+            super().__init__(root=root, version=version, transform=transform,download=True)
+        else:
+            super().__init__(root=root, version=version, transform=transform,download=False)
+
         
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         image, target = super().__getitem__(index)
@@ -35,8 +39,13 @@ class NaturalValidation(INaturalist):
             T.ToTensor()
         ])
         
-        super().__init__(root=root, version='2021_valid', transform=transform,download=True)
-        
+        version  = '2021_valid'
+        if not os.path.isdir('data/'+version): 
+            super().__init__(root=root, version=version, transform=transform,download=True)
+        else:
+            super().__init__(root=root, version=version, transform=transform,download=False)
+
+                
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         image, target = super().__getitem__(index)
         return {'image': image, 'class': torch.tensor([target])}

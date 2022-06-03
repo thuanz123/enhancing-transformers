@@ -88,6 +88,13 @@ class VQLPIPSWithDiscriminator(nn.Module):
         self.adversarial_weight = adversarial_weight
         self.use_adaptive_adv = use_adaptive_adv
 
+    def get_grad_norm(self, nll_loss: torch.FloatTensor,
+                                  g_loss: torch.FloatTensor, last_layer: nn.Module) -> torch.FloatTensor:
+        nll_grads = torch.autograd.grad(nll_loss, last_layer, retain_graph=True)[0]
+        g_grads = torch.autograd.grad(g_loss, last_layer, retain_graph=True)[0]
+
+        return torch.norm(nll_grads), torch.norm(g_grads)
+    
     def calculate_adaptive_factor(self, nll_loss: torch.FloatTensor,
                                   g_loss: torch.FloatTensor, last_layer: nn.Module) -> torch.FloatTensor:
         nll_grads = torch.autograd.grad(nll_loss, last_layer, retain_graph=True)[0]
@@ -125,17 +132,30 @@ class VQLPIPSWithDiscriminator(nn.Module):
 
             disc_factor = 1 if global_step >= self.discriminator_iter_start else 0
             loss = nll_loss + disc_factor * d_weight * g_loss + self.codebook_weight * codebook_loss
+            if self.training: 
+                nll_grad_norm, g_grad_norm = self.get_grad_norm(nll_loss, g_loss, last_layer=last_layer) #added grad norm monitoring here
+                log = {"{}/total_loss".format(split): loss.clone().detach(),
+                    "{}/quant_loss".format(split): codebook_loss.detach(),
+                    "{}/rec_loss".format(split): nll_loss.detach(),
+                    "{}/loglaplace_loss".format(split): loglaplace_loss.detach(),
+                    "{}/loggaussian_loss".format(split): loggaussian_loss.detach(),
+                    "{}/perceptual_loss".format(split): perceptual_loss.detach(),
+                    "{}/d_weight".format(split): d_weight.detach(),
+                    "{}/g_loss".format(split): g_loss.detach(),
+                    "{}/nll_grad_norm".format(split): nll_grad_norm,
+                    "{}/g_grad_norm".format(split): g_grad_norm
+                    }
+            else:
+                log = {"{}/total_loss".format(split): loss.clone().detach(),
+                    "{}/quant_loss".format(split): codebook_loss.detach(),
+                    "{}/rec_loss".format(split): nll_loss.detach(),
+                    "{}/loglaplace_loss".format(split): loglaplace_loss.detach(),
+                    "{}/loggaussian_loss".format(split): loggaussian_loss.detach(),
+                    "{}/perceptual_loss".format(split): perceptual_loss.detach(),
+                    "{}/d_weight".format(split): d_weight.detach(),
+                    "{}/g_loss".format(split): g_loss.detach(),
+                    }
 
-            log = {"{}/total_loss".format(split): loss.clone().detach(),
-                   "{}/quant_loss".format(split): codebook_loss.detach(),
-                   "{}/rec_loss".format(split): nll_loss.detach(),
-                   "{}/loglaplace_loss".format(split): loglaplace_loss.detach(),
-                   "{}/loggaussian_loss".format(split): loggaussian_loss.detach(),
-                   "{}/perceptual_loss".format(split): perceptual_loss.detach(),
-                   "{}/d_weight".format(split): d_weight.detach(),
-                   "{}/g_loss".format(split): g_loss.detach(),
-                   }
-            
             return loss, log
 
         if optimizer_idx == 1:
