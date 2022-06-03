@@ -138,12 +138,11 @@ class ViTVQ(pl.LightningModule):
 
         self.log("val/rec_loss", rec_loss, prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True)
         self.log("val/total_loss", aeloss, prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True)
-
         del log_dict_ae["val/rec_loss"]
         del log_dict_ae["val/total_loss"]
-        
-        self.log_dict(log_dict_ae)
-        self.log_dict(log_dict_disc)
+
+        self.log_dict(log_dict_ae, prog_bar=False, logger=True, on_step=True, on_epoch=True)
+        self.log_dict(log_dict_disc, prog_bar=False, logger=True, on_step=True, on_epoch=True)
 
         return self.log_dict
 
