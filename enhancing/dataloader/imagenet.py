@@ -6,21 +6,27 @@
 
 import PIL
 from typing import Any, Tuple, Union
+from pathlib import Path
+from typing import Optional, Union, Callable, Tuple, Any
 
 import torch
+import os 
 from torchvision import transforms as T
-from torchvision.datasets import ImageNet
+from torchvision.datasets import ImageFolder
 
 
-class ImageNetBase(ImageNet):
+
+class ImageNetBase(ImageFolder):
     def __init__(self, root: str, split: str,
-                 transform: Optional[Callable] = None) -> None:
-        super().__init__(root=root, split='train', transform=transform)
+                 transform: Callable) -> None:
+        root = os.path.join(root,'imagenet-object-localization-challenge/ILSVRC/Data/CLS-LOC/')
+        root = Path(root)/split
+        super().__init__(root, transform)
         
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         image, target = super().__getitem__(index)
-
-        return {'image': image, 'class': target.unsqueeze(-1)}
+        return {'image': image, 'class': torch.tensor([target])}
+        
 
 
 class ImageNetTrain(ImageNetBase):
@@ -32,7 +38,7 @@ class ImageNetTrain(ImageNetBase):
             T.ToTensor()
         ])
         
-        super().__init__(root=root, split='train', transform)
+        super().__init__(root=root, split='train', transform=transform)
         
 
 class ImageNetValidation(ImageNetBase):
@@ -43,4 +49,4 @@ class ImageNetValidation(ImageNetBase):
             T.ToTensor()
         ])
         
-        super().__init__(root=root, split='val', transform)
+        super().__init__(root=root, split='val', transform=transform)

@@ -1,0 +1,50 @@
+model:
+    target: enhancing.modules.stage1.vitvqgan.ViTVQ
+    params:
+        image_key: image
+       # scheduler:
+       #     target: enhancing.utils.scheduler.LambdaWarmUpCosineScheduler
+       #     params:
+       #       warm_up_steps: 10000
+       #         min_: 0.00005
+       #         max_: 0.0001
+       #         start: 0.0000045
+       #         max_decay_steps: 80000
+
+        hparams:
+            image_size: 256
+            patch_size: 8
+            dim: 768
+            depth: 12
+            heads: 12
+            mlp_dim: 3072
+        qparams:
+            embed_dim: 32 
+            n_embed: 8192 
+        loss:
+            target: enhancing.losses.vqperceptual.VQLPIPSWithDiscriminator
+            params:
+                disc_start: 50000
+                loglaplace_weight: 0.1
+                loggaussian_weight: 1.0
+                perceptual_weight: 0.1
+                codebook_weight: 1.0
+                adversarial_weight: 1
+                use_adaptive_adv: True
+
+dataset:
+    target: enhancing.dataloader.DataModuleFromConfig
+    params:
+        batch_size: 4
+        num_workers: 2
+        train:
+            target: enhancing.dataloader.classimage.ClassImageTrain
+            params:
+                root: data
+                resolution: 256
+                
+        validation:
+            target: enhancing.dataloader.classimage.ClassImageValidation
+            params:
+                root: data
+                resolution: 256

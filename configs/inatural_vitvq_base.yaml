@@ -1,0 +1,39 @@
+model:
+    target: enhancing.modules.stage1.vitvqgan.ViTVQ
+    params:
+        image_key: image
+        hparams:
+            image_size: 256
+            patch_size: 8
+            dim: 768
+            depth: 12
+            heads: 12
+            mlp_dim: 3072
+        qparams:
+            embed_dim: 32 
+            n_embed: 8192 
+        loss:
+            target: enhancing.losses.vqperceptual.VQLPIPSWithDiscriminator
+            params:
+                disc_start: 50001
+                loglaplace_weight: 0.1
+                loggaussian_weight: 1.0
+                perceptual_weight: 0.1
+                codebook_weight: 1.0
+
+dataset:
+    target: enhancing.dataloader.DataModuleFromConfig
+    params:
+        batch_size: 4
+        num_workers: 2
+        train:
+            target: enhancing.dataloader.inatural.NaturalTrain
+            params:
+                root: data
+                resolution: 256
+                
+        validation:
+            target: enhancing.dataloader.inatural.NaturalValidation
+            params:
+                root: data
+                resolution: 256

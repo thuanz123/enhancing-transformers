@@ -18,9 +18,9 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--config', type=str, required=True)
     parser.add_argument('-s', '--seed', type=int, default=0)
     parser.add_argument('-ng', '--num_gpus', type=int, default=1)
-    parser.add_argument('-e', '--epochs', type=int, default=10)
+    parser.add_argument('-e', '--epochs', type=int, default=100)
     parser.add_argument('-lr', '--base_lr', type=float, default=4.5e-6)
-    parser.add_argument('-a', '--use_amp', default=False, action='store_true')
+    parser.add_argument('-a', '--use_amp', default=True, action='store_true')
     parser.add_argument('-b', '--batch_frequency', type=int, default=750)
     parser.add_argument('-m', '--max_images', type=int, default=4)
     args = parser.parse_args()
@@ -45,13 +45,12 @@ if __name__ == '__main__':
     data = initialize_from_config(config.dataset)
     data.prepare_data()
     #data.setup()
-    
+
     # Build trainer
     trainer = pl.Trainer(max_epochs=exp_config.epochs,
                          precision=16 if exp_config.use_amp else 32,
                          callbacks=callbacks,
                          gpus=args.num_gpus,
                          logger=logger)
-
     # Train
     trainer.fit(model, data)
