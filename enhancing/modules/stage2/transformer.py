@@ -26,9 +26,10 @@ class CondTransformer(pl.LightningModule):
                  code_shape: List[int] = None, scheduler: Optional[OmegaConf] = None) -> None:
         super().__init__()
         
-        # get condition key and code shape
+        # get condition key, code shape and scheduler
         self.cond_key = cond_key
         self.code_shape = code_shape
+        self.scheduler = scheduler
 
         # load condition model
         self.cond_model = initialize_from_config(cond)
@@ -38,9 +39,6 @@ class CondTransformer(pl.LightningModule):
         
         # load transformer
         self.transformer = initialize_from_config(transformer)
-
-        # get lr scheduler
-        self.scheduler = initialize_from_config(scheduler) if scheduler else None
 
         # make the parameters in stage1 model not trainable
         self.stage1_model.eval()
@@ -181,10 +179,13 @@ class CondTransformer(pl.LightningModule):
             {"params": [param_dict[pn] for pn in sorted(list(decay))], "weight_decay": 0.01},
             {"params": [param_dict[pn] for pn in sorted(list(no_decay))], "weight_decay": 0.0},
         ]
-        optimizer = [torch.optim.AdamW(optim_groups, lr=self.learning_rate, betas=(0.9, 0.95))]
+        optimizer = [torch.optim.Adam(optim_groups, lr=self.learning_rate, betas=(0.9, 0.96))]
         scheduler = []
 
         if self.scheduler is not None:
+            self.scheduler.params.start = lr
+            scheduler = initialize_from_config(self.scheduler)
+
             scheduler = [{
                 'scheduler': lr_scheduler.LambdaLR(optimizer[0], lr_lambda=self.scheduler.schedule),
                 'interval': 'step',
