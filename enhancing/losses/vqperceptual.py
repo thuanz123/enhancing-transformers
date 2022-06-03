@@ -116,7 +116,7 @@ class VQLPIPSWithDiscriminator(nn.Module):
             g_loss = self.disc_loss(logits_fake)
             
             try:
-                d_weight = self.adversarial_weight
+                d_weight = torch.tensor(self.adversarial_weight)
                 
                 if self.use_adaptive_adv:
                     d_weight *= self.calculate_adaptive_factor(nll_loss, g_loss, last_layer=last_layer)
