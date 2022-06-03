@@ -31,7 +31,7 @@ class NaturalTrain(INaturalist):
             T.ToTensor()
         ])
         
-        super().__init__(root=root, version='2021_train_mini', transform=transform, download=True)
+        super().__init__(root=root, version='2021_train', transform=transform, download=True)
         
 
 class NaturalValidation(INaturalist):
