@@ -23,6 +23,7 @@ model:
 
 dataset:
     target: enhancing.dataloader.DataModuleFromConfig
+    num_workers: 12
     params:
         batch_size: 4
         num_workers: 2

@@ -7,7 +7,6 @@ from typing import Optional, Union, Callable, Tuple, Any
 import torch
 import os 
 from torchvision import transforms as T
-from torchvision.datasets import ImageFolder
 from torchvision.datasets import INaturalist
 
 

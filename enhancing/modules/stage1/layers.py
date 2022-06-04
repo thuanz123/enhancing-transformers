@@ -207,6 +207,8 @@ class ViTDecoder(nn.Module):
     def get_last_layer(self) -> nn.Parameter:
         return self.to_pixel.conv_out.weight
 
+    def get_first_layer(self) -> nn.Parameter:
+        return self.transformer.layers[0][0].fn.to_qkv.weight
 
 class SequencerEncoder(nn.Module):
     def __init__(self, mlp_ratio: int = 3, dims: List[int] = [3, 192, 384, 384, 384], hidden_dims: List[int] = [48, 96, 96, 96],
@@ -253,3 +255,6 @@ class SequencerDecoder(nn.Module):
 
     def get_last_layer(self) -> nn.Parameter:
         return self.blocks.upsample0.conv.weight
+    
+    def get_first_layer(self) -> nn.Parameter:
+        return self.blocks.sequencer0.layers[0][0].lstm_v.weight
