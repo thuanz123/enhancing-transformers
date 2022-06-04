@@ -9,18 +9,19 @@ from typing import Any, Tuple, Union
 
 import torch
 from torchvision import transforms as T
-from torchvision.datasets import ImageNet
+from torchvision.datasets import ImageFolder
 
 
-class ImageNetBase(ImageNet):
+class ImageNetBase(ImageFolder):
     def __init__(self, root: str, split: str,
                  transform: Optional[Callable] = None) -> None:
-        super().__init__(root=root, split='train', transform=transform)
+        root = Path(root)/'imagenet-object-localization-challenge/ILSVRC/Data/CLS-LOC'/split
+        super().__init__(root=root, transform=transform)
         
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         image, target = super().__getitem__(index)
 
-        return {'image': image, 'class': target.unsqueeze(-1)}
+        return {'image': image, 'class': torch.tensor([target])}
 
 
 class ImageNetTrain(ImageNetBase):
@@ -33,7 +34,7 @@ class ImageNetTrain(ImageNetBase):
         ])
         
         super().__init__(root=root, split='train', transform)
-        
+
 
 class ImageNetValidation(ImageNetBase):
     def __init__(self, root: str, resolution: Union[Tuple[int, int], int] = 256) -> None:
