@@ -141,8 +141,8 @@ class VQLPIPSWithDiscriminator(nn.Module):
                         "{}/perceptual_loss".format(split): perceptual_loss.detach(),
                         "{}/d_weight".format(split): d_weight.detach(),
                         "{}/g_loss".format(split): g_loss.detach(),
-                        "{}/nll_grad_norm_update".format(split): nll_grad_norm,
-                        "{}/g_grad_norm_update".format(split): g_grad_norm,
+                        "{}/nll_grad_norm_update".format(split): nll_grad_norm.detach(),
+                        "{}/g_grad_norm_update".format(split): g_grad_norm.detach(),
                         }
                 else:
                     log = {"{}/total_loss".format(split): loss.clone().detach(),
