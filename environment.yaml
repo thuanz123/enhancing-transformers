@@ -13,7 +13,7 @@ dependencies:
     - ftfy==6.1.1
     - lpips==0.1.4
     - regex==2021.10.8
-    - pytorch-lightning==1.6.3
+    - pytorch-lightning==1.5.10
     - einops==0.3.0
     - omegaconf==2.0.0
     - lmdb==1.0.0

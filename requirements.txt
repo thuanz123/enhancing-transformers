@@ -3,7 +3,7 @@ lpips==0.1.4
 regex==2021.10.8
 torch==1.7.1
 torchvision==0.8.2
-pytorch-lightning==1.6.3
+pytorch-lightning==1.5.10
 einops==0.3.0
 omegaconf==2.0.0
 numpy==1.19.2
