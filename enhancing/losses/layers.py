@@ -313,14 +313,30 @@ class StyleDiscriminator(nn.Module):
             blocks.append(block)
         self.blocks = nn.Sequential(*blocks)
 
-        self.final_conv = EqualConv2d(filters[-1], filters[-1], 3, padding=1, activation=True)
+        self.stddev_group = 4
+        self.stddev_feat = 1
+        
+        self.final_conv = EqualConv2d(filters[-1]+1, filters[-1], 3, padding=1, activation=True)
         self.final_linear = nn.Sequential(
             EqualLinear(filters[-1] * 2 * 2, filters[-1], activation=True),
             EqualLinear(filters[-1], 1),
         )
 
     def forward(self, x):
-        x = self.final_conv(self.blocks(x))
-        x = self.final_linear(x.view(x.shape[0], -1))
+        out = self.blocks(x)
+        batch, channel, height, width = out.shape
+
+        group = min(batch, self.stddev_group)
+        stddev = out.view(
+            group, -1, self.stddev_feat, channel // self.stddev_feat, height, width
+        )
+        stddev = torch.sqrt(stddev.var(0, unbiased=False) + 1e-8)
+        stddev = stddev.mean([2, 3, 4], keepdims=True).squeeze(2)
+        stddev = stddev.repeat(group, 1, height, width)
+        out = torch.cat([out, stddev], 1)
+        
+        out = self.final_conv(out)
+        out = out.view(out.shape[0], -1)
+        out = self.final_linear(out)
              
-        return x.squeeze()
+        return out.squeeze()
