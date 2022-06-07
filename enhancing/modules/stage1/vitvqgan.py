@@ -132,8 +132,6 @@ class ViTVQ(pl.LightningModule):
         aeloss, log_dict_ae = self.loss(qloss, x, xrec, 0, self.global_step,
                                         last_layer=self.decoder.get_last_layer(), split="val")
 
-        discloss, log_dict_disc = self.loss(qloss, x, xrec, 1, self.global_step,
-                                            last_layer=self.decoder.get_last_layer(), split="val")
         rec_loss = log_dict_ae["val/rec_loss"]
 
         self.log("val/rec_loss", rec_loss, prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True)
@@ -142,8 +140,13 @@ class ViTVQ(pl.LightningModule):
         del log_dict_ae["val/total_loss"]
 
         self.log_dict(log_dict_ae, prog_bar=False, logger=True, on_step=True, on_epoch=True)
-        self.log_dict(log_dict_disc, prog_bar=False, logger=True, on_step=True, on_epoch=True)
 
+        if hasattr(self.loss, 'discriminator'):
+            discloss, log_dict_disc = self.loss(qloss, x, xrec, 1, self.global_step,
+                                                last_layer=self.decoder.get_last_layer(), split="val")
+            
+            self.log_dict(log_dict_disc, prog_bar=False, logger=True, on_step=True, on_epoch=True)
+        
         return self.log_dict
 
     def configure_optimizers(self) -> Tuple[List, List]:

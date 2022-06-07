@@ -102,16 +102,16 @@ class VQLPIPSWithDiscriminator(nn.Module):
                 optimizer_idx: int, global_step: int, last_layer: Optional[nn.Module] = None, split: Optional[str] = "train") -> Tuple:
         inputs = inputs.contiguous()
         reconstructions = reconstructions.contiguous()       
-
-        loglaplace_loss = (reconstructions - inputs).abs().mean()
-        loggaussian_loss = (reconstructions - inputs).pow(2).mean()
-        perceptual_loss = self.perceptual_loss(inputs*2-1, reconstructions*2-1).mean()
-
-        nll_loss = self.loglaplace_weight * loglaplace_loss + self.loggaussian_weight * loggaussian_loss + self.perceptual_weight * perceptual_loss
         
         # now the GAN part
         if optimizer_idx == 0:
             # generator update
+            loglaplace_loss = (reconstructions - inputs).abs().mean()
+            loggaussian_loss = (reconstructions - inputs).pow(2).mean()
+            perceptual_loss = self.perceptual_loss(inputs*2-1, reconstructions*2-1).mean()
+
+            nll_loss = self.loglaplace_weight * loglaplace_loss + self.loggaussian_weight * loggaussian_loss + self.perceptual_weight * perceptual_loss
+        
             logits_fake = self.discriminator(reconstructions)
             g_loss = self.disc_loss(logits_fake)
             
