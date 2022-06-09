@@ -32,7 +32,7 @@ class BaseQuantizer(nn.Module):
         self.n_embed = n_embed
 
         self.embedding = nn.Embedding(self.n_embed, self.embed_dim)
-        self.embedding.weight.data.uniform_(-1.0 / self.n_embed, 1.0 / self.n_embed)
+        self.embedding.weight.data.normal_()
         
     def quantize(self, z: torch.FloatTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.LongTensor]:
         pass
