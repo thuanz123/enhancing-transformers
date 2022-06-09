@@ -327,6 +327,8 @@ class StyleDiscriminator(nn.Module):
         batch, channel, height, width = out.shape
 
         group = min(batch, self.stddev_group)
+        group = batch//(batch//group)
+        
         stddev = out.view(
             group, -1, self.stddev_feat, channel // self.stddev_feat, height, width
         )
