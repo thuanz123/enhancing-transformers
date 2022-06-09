@@ -43,7 +43,7 @@ class ViTVQ(pl.LightningModule):
 
     def forward(self, x: torch.FloatTensor) -> torch.FloatTensor:    
         quant, diff = self.encode(x)
-        dec = self.decode(quant)
+        dec = self.decoder(quant, return_full=True)
         
         return dec, diff
 
@@ -234,7 +234,7 @@ class ViTVQ(pl.LightningModule):
         quant, _ = self.encode(x)
         
         log["originals"] = x
-        log["reconstructions"] = self.decode(quant)
+        log["reconstructions"] = self.decode(quant).sigmoid()
         
         return log
 

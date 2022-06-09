@@ -92,7 +92,7 @@ class CondTransformer(pl.LightningModule):
             if self.code_shape is not None:
                 codes = codes.view(codes.shape[0], *self.code_shape)
                 
-            return self.stage1_model.decode_codes(codes).clamp(0, 1)
+            return self.stage1_model.decode_codes(codes).sigmoid()
         else:
             codes = codes.view(-1, codes.shape[-1])
             

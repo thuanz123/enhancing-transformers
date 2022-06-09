@@ -150,8 +150,8 @@ class Sequencer(nn.Module):
 
 
 class ViTEncoder(nn.Module):
-    def __init__(self, image_size: Union[Tuple[int, int], int], patch_size: Union[Tuple[int, int], int],
-                 dim: int, depth: int, heads: int, mlp_dim: int, channels: int = 3, dim_head: int = 64) -> None:
+    def __init__(self, image_size: Union[Tuple[int, int], int], patch_size: Union[Tuple[int, int], int], dim: int,
+                 depth: int, heads: int, mlp_dim: int, in_channels: int = 3, dim_head: int = 64, **kwargs) -> None:
         super().__init__()
         image_height, image_width = image_size if isinstance(image_size, tuple) \
                                     else (image_size, image_size)
@@ -164,7 +164,7 @@ class ViTEncoder(nn.Module):
         self.patch_dim = channels * patch_height * patch_width
         
         self.to_patch_embedding = nn.Sequential(
-            nn.Conv2d(channels, dim, kernel_size=patch_size, stride=patch_size),
+            nn.Conv2d(in_channels, dim, kernel_size=patch_size, stride=patch_size),
             Rearrange('b c h w -> b (h w) c'),
         )
         self.en_pos_embedding = nn.Parameter(torch.randn(1, self.num_patches, dim))
@@ -178,8 +178,8 @@ class ViTEncoder(nn.Module):
 
 
 class ViTDecoder(nn.Module):
-    def __init__(self, image_size: Union[Tuple[int, int], int], patch_size: Union[Tuple[int, int], int],
-                 dim: int, depth: int, heads: int, mlp_dim: int, channels: int = 3, dim_head: int = 64) -> None:
+    def __init__(self, image_size: Union[Tuple[int, int], int], patch_size: Union[Tuple[int, int], int], dim: int,
+                 depth: int, heads: int, mlp_dim: int, out_channels: int = 6, dim_head: int = 64, **kwargs) -> None:
         super().__init__()
         image_height, image_width = image_size if isinstance(image_size, tuple) \
                                     else (image_size, image_size)
@@ -195,58 +195,55 @@ class ViTDecoder(nn.Module):
         self.de_pos_embedding = nn.Parameter(torch.randn(1, self.num_patches, dim))        
         self.to_pixel = nn.Sequential(OrderedDict([
             ('reshape', Rearrange('b (h w) c -> b c h w', h=image_height // patch_height)),
-            ('conv_out', nn.ConvTranspose2d(dim, channels, kernel_size=patch_size, stride=patch_size))
+            ('conv_out', nn.ConvTranspose2d(dim, out_channels, kernel_size=patch_size, stride=patch_size))
         ]))
                                       
     def forward(self, token: torch.FloatTensor) -> torch.FloatTensor:
         token += self.de_pos_embedding
         x = self.transformer(token)
+        x = self.to_pixel(x)
 
-        return self.to_pixel(x)
+        return x
 
     def get_last_layer(self) -> nn.Parameter:
         return self.to_pixel.conv_out.weight
 
 
 class SequencerEncoder(nn.Module):
-    def __init__(self, mlp_ratio: int = 3, dims: List[int] = [3, 192, 384, 384, 384], hidden_dims: List[int] = [48, 96, 96, 96],
-                 stage_depths: List[int] = [4, 3, 8, 3], scales: List[Union[int, Tuple[int, int]]] = [7, 2, 1, 1]) -> None:
+    def __init__(self, mlp_ratio: int = 3, in_dims: List[int] = [3, 192, 384, 384, 384], hidden_dims: List[int] = [48, 96, 96, 96],
+                 stage_depths: List[int] = [4, 3, 8, 3], scales: List[Union[int, Tuple[int, int]]] = [7, 2, 1, 1], **kwargs) -> None:
         super().__init__()
-        assert (len(dims) - 1) == len(hidden_dims) == len(stage_depths) == len(scales)
+        assert (len(in_dims) - 1) == len(hidden_dims) == len(stage_depths) == len(scales)
         
         self.blocks = nn.Sequential()
         for idx in range(len(stage_depths)):
             depth, downscale = stage_depths[idx], scales[idx]
             
-            self.blocks.add_module(f'downsample{idx}', Downsample(dims[idx], dims[idx+1], downscale))
-            self.blocks.add_module(f'sequencer{idx}', Sequencer(dims[idx+1], hidden_dims[idx], mlp_ratio, depth))
-
-        self.norm = nn.LayerNorm(dims[-1])
+            self.blocks.add_module(f'downsample{idx}', Downsample(in_dims[idx], in_dims[idx+1], downscale))
+            self.blocks.add_module(f'sequencer{idx}', Sequencer(in_dims[idx+1], hidden_dims[idx], mlp_ratio, depth))
         
     def forward(self, x: torch.FloatTensor) -> torch.FloatTensor:
         x = rearrange(x, 'b c h w -> b h w c')
-        x = self.norm(self.blocks(x))
+        x = self.blocks(x)
         
         return x
 
 
 class SequencerDecoder(nn.Module):
-    def __init__(self, mlp_ratio: int = 3, dims: List[int] = [3, 192, 384, 384, 384], hidden_dims: List[int] = [48, 96, 96, 96],
-                 stage_depths: List[int] = [4, 3, 8, 3], scales: List[Union[int, Tuple[int, int]]] = [7, 2, 1, 1]) -> None:
+    def __init__(self, mlp_ratio: int = 3, out_dims: List[int] = [6, 192, 384, 384, 384], hidden_dims: List[int] = [48, 96, 96, 96],
+                 stage_depths: List[int] = [4, 3, 8, 3], scales: List[Union[int, Tuple[int, int]]] = [7, 2, 1, 1], **kwargs) -> None:
         super().__init__()
         assert (len(dims) - 1) == len(hidden_dims) == len(stage_depths) == len(scales)
 
-        self.norm = nn.LayerNorm(dims[-1])
-        
         self.blocks = nn.Sequential()
         for idx in reversed(range(len(stage_depths))):
             depth, upscale = stage_depths[idx], scales[idx]
             
-            self.blocks.add_module(f'sequencer{idx}', Sequencer(dims[idx+1], hidden_dims[idx], mlp_ratio, depth))
-            self.blocks.add_module(f'upsample{idx}', Upsample(dims[idx+1], dims[idx], upscale))
+            self.blocks.add_module(f'sequencer{idx}', Sequencer(out_dims[idx+1], out_dims[idx], mlp_ratio, depth))
+            self.blocks.add_module(f'upsample{idx}', Upsample(out_dims[idx+1], out_dims[idx], upscale))
 
     def forward(self, x: torch.FloatTensor) -> torch.FloatTensor:
-        x = self.blocks(self.norm(x))
+        x = self.blocks(x)
         x = rearrange(x, 'b h w c -> b c h w')
         
         return x
