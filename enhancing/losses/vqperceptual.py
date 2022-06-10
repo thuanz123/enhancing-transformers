@@ -137,7 +137,7 @@ class VQLPIPSWithDiscriminator(nn.Module):
                    }
 
             if self.use_adaptive_adv:
-                log[f"{}/d_weight".format(split)] = d_weight.detach()
+                log["{}/d_weight".format(split)] = d_weight.detach()
             
             return loss, log
 
