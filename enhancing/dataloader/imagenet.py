@@ -33,7 +33,7 @@ class ImageNetTrain(ImageNetBase):
             T.ToTensor()
         ])
         
-        super().__init__(root=root, split='train', transform)
+        super().__init__(root=root, split='train',  transform=transform)
 
 
 class ImageNetValidation(ImageNetBase):
@@ -44,4 +44,4 @@ class ImageNetValidation(ImageNetBase):
             T.ToTensor()
         ])
         
-        super().__init__(root=root, split='val', transform)
+        super().__init__(root=root, split='val',  transform=transform)
