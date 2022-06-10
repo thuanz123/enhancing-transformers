@@ -113,6 +113,8 @@ class VQModel(pl.LightningModule):
                                             last_layer=self.decoder.get_last_layer(), split="train")
 
             self.log("train/total_loss", aeloss, prog_bar=True, logger=True, on_step=True, on_epoch=True)
+            del log_dict_ae["train/total_loss"]
+            
             self.log_dict(log_dict_ae, prog_bar=False, logger=True, on_step=True, on_epoch=True)
 
             return aeloss
@@ -122,7 +124,9 @@ class VQModel(pl.LightningModule):
             discloss, log_dict_disc = self.loss(qloss, x, xrec, optimizer_idx, self.global_step,
                                                 last_layer=self.decoder.get_last_layer(), split="train")
             
-            self.log("train/discloss", discloss, prog_bar=True, logger=True, on_step=True, on_epoch=True)
+            self.log("train/disc_loss", discloss, prog_bar=True, logger=True, on_step=True, on_epoch=True)
+            del log_dict_disc["train/disc_loss"]
+            
             self.log_dict(log_dict_disc, prog_bar=False, logger=True, on_step=True, on_epoch=True)
             
             return discloss
@@ -133,16 +137,21 @@ class VQModel(pl.LightningModule):
         aeloss, log_dict_ae = self.loss(qloss, x, xrec, 0, self.global_step,
                                         last_layer=self.decoder.get_last_layer(), split="val")
 
-        discloss, log_dict_disc = self.loss(qloss, x, xrec, 1, self.global_step,
-                                            last_layer=self.decoder.get_last_layer(), split="val")
         rec_loss = log_dict_ae["val/rec_loss"]
-        self.log("val/rec_loss", rec_loss,
-                 prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True)
-        self.log("val/total_loss", aeloss,
-                 prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True)
-        self.log_dict(log_dict_ae)
-        self.log_dict(log_dict_disc)
 
+        self.log("val/rec_loss", rec_loss, prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True)
+        self.log("val/total_loss", aeloss, prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True)
+        del log_dict_ae["val/rec_loss"]
+        del log_dict_ae["val/total_loss"]
+
+        self.log_dict(log_dict_ae, prog_bar=False, logger=True, on_step=True, on_epoch=True)
+
+        if hasattr(self.loss, 'discriminator'):
+            discloss, log_dict_disc = self.loss(qloss, x, xrec, 1, self.global_step,
+                                                last_layer=self.decoder.get_last_layer(), split="val")
+            
+            self.log_dict(log_dict_disc, prog_bar=False, logger=True, on_step=True, on_epoch=True)
+        
         return self.log_dict
 
     def configure_optimizers(self) -> Tuple[List, List]:
@@ -179,7 +188,7 @@ class VQModel(pl.LightningModule):
         quant, _ = self.encode(x)
         
         log["originals"] = x
-        log["reconstructions"] = self.decode(quant)
+        log["reconstructions"] = self.decode(quant).sigmoid()
         
         return log
 

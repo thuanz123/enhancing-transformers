@@ -65,9 +65,12 @@ class ViTVQ(pl.LightningModule):
         
         return quant, emb_loss
 
-    def decode(self, quant: torch.FloatTensor) -> torch.FloatTensor:
+    def decode(self, quant: torch.FloatTensor, return_full: bool = False) -> torch.FloatTensor:
         quant = self.post_quant(quant)
         dec = self.decoder(quant)
+
+        if not return_full:
+            dec = dec[:, :3, :]
         
         return dec
 
@@ -78,7 +81,7 @@ class ViTVQ(pl.LightningModule):
         
         return codes
 
-    def decode_codes(self, code: torch.LongTensor) -> torch.FloatTensor:
+    def decode_codes(self, code: torch.LongTensor, return_full: bool = False) -> torch.FloatTensor:
         quant = self.quantizer.embedding(code)
         quant = self.quantizer.norm(quant)
         
@@ -86,6 +89,8 @@ class ViTVQ(pl.LightningModule):
             quant = quant.sum(-2)  
             
         dec = self.decode(quant)
+        if not return_full:
+            dec = dec[:, :3, :]
         
         return dec
 
