@@ -144,6 +144,7 @@ class VQLPIPSWithDiscriminator(nn.Module):
         if optimizer_idx == 1:
             # second pass for discriminator update
             inputs.requires_grad_()
+
             logits_real = self.discriminator(inputs)
             logits_fake = self.discriminator(reconstructions.detach())
             
