@@ -18,31 +18,6 @@ from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
 
 
-class Downsample(nn.Module):
-    def __init__(self, in_channel: int, out_channel: int, downscale: Union[int, Tuple[int, int]]) -> None:
-        super().__init__()
-        self.conv = nn.Conv2d(in_channel, out_channel, kernel_size=downscale, stride=downscale)
-
-    def forward(self, x) -> torch.FloatTensor:
-        x = self.conv(rearrange(x, 'b h w c -> b c h w'))
-        x = rearrange(x, 'b c h w -> b h w c')
-
-        return x
-
-
-class Upsample(nn.Module):
-    def __init__(self, in_channel: int, out_channel: int, upscale: Union[int, Tuple[int, int]]) -> None:
-        super().__init__()
-        self.up = nn.Upsample(scale_factor=upscale)
-        self.conv = nn.Conv2d(in_channel, out_channel, kernel_size=3, padding=1)
-
-    def forward(self, x) -> torch.FloatTensor:
-        x = self.up(rearrange(x, 'b h w c -> b c h w'))
-        x = rearrange(self.conv(x), 'b c h w -> b h w c')
-
-        return x
-
-
 class PreNorm(nn.Module):
     def __init__(self, dim: int, fn: nn.Module) -> None:
         super().__init__()
@@ -93,27 +68,6 @@ class Attention(nn.Module):
         return self.to_out(out)
 
 
-class BiLSTM2D(nn.Module):
-    def __init__(self, in_dim: int, dim: int) -> None:
-        super().__init__()
-        self.lstm_v = nn.LSTM(in_dim, dim, batch_first=True, bidirectional=True)
-        self.lstm_h = nn.LSTM(in_dim, dim, batch_first=True, bidirectional=True)
-
-        self.fc = nn.Linear(4 * dim, in_dim)
-
-    def forward(self, x: torch.FloatTensor) -> torch.FloatTensor:
-        v, _ = self.lstm_v(rearrange(x, 'b h w c -> (b w) h c'))
-        v = rearrange(v, '(b w) h c -> b h w c', w=x.shape[2])
-
-        h, _ = self.lstm_h(rearrange(x, 'b h w c -> (b h) w c'))
-        h = rearrange(h, '(b h) w c -> b h w c', h=x.shape[1])
-
-        x = torch.cat([v, h], dim=-1)
-        x = self.fc(x)
-
-        return x
-
-
 class Transformer(nn.Module):
     def __init__(self, dim: int, depth: int, heads: int, dim_head: int, mlp_dim: int) -> None:
         super().__init__()
@@ -128,24 +82,6 @@ class Transformer(nn.Module):
             x = attn(x) + x
             x = ff(x) + x
             
-        return x
-
-
-class Sequencer(nn.Module):
-    def __init__(self, dim: int = 192, hidden_dim: int = 48, mlp_ratio: int = 3, depth: int = 1) -> None:
-        super().__init__()
-        self.layers = nn.ModuleList([])
-        
-        for idx in range(depth):
-            layer = nn.ModuleList([PreNorm(dim, BiLSTM2D(dim, hidden_dim)),
-                                   PreNorm(dim, FeedForward(dim, dim*mlp_ratio))])
-            self.layers.append(layer)
-
-    def forward(self, x: torch.FloatTensor) -> torch.FloatTensor:
-        for lstm, ff in self.layers:
-            x = lstm(x) + x
-            x = ff(x) + x
-
         return x
 
 
@@ -207,46 +143,3 @@ class ViTDecoder(nn.Module):
 
     def get_last_layer(self) -> nn.Parameter:
         return self.to_pixel.conv_out.weight
-
-
-class SequencerEncoder(nn.Module):
-    def __init__(self, mlp_ratio: int = 3, in_dims: List[int] = [3, 192, 384, 384, 384], hidden_dims: List[int] = [48, 96, 96, 96],
-                 stage_depths: List[int] = [4, 3, 8, 3], scales: List[Union[int, Tuple[int, int]]] = [7, 2, 1, 1], **kwargs) -> None:
-        super().__init__()
-        assert (len(in_dims) - 1) == len(hidden_dims) == len(stage_depths) == len(scales)
-        
-        self.blocks = nn.Sequential()
-        for idx in range(len(stage_depths)):
-            depth, downscale = stage_depths[idx], scales[idx]
-            
-            self.blocks.add_module(f'downsample{idx}', Downsample(in_dims[idx], in_dims[idx+1], downscale))
-            self.blocks.add_module(f'sequencer{idx}', Sequencer(in_dims[idx+1], hidden_dims[idx], mlp_ratio, depth))
-        
-    def forward(self, x: torch.FloatTensor) -> torch.FloatTensor:
-        x = rearrange(x, 'b c h w -> b h w c')
-        x = self.blocks(x)
-        
-        return x
-
-
-class SequencerDecoder(nn.Module):
-    def __init__(self, mlp_ratio: int = 3, out_dims: List[int] = [6, 192, 384, 384, 384], hidden_dims: List[int] = [48, 96, 96, 96],
-                 stage_depths: List[int] = [4, 3, 8, 3], scales: List[Union[int, Tuple[int, int]]] = [7, 2, 1, 1], **kwargs) -> None:
-        super().__init__()
-        assert (len(dims) - 1) == len(hidden_dims) == len(stage_depths) == len(scales)
-
-        self.blocks = nn.Sequential()
-        for idx in reversed(range(len(stage_depths))):
-            depth, upscale = stage_depths[idx], scales[idx]
-            
-            self.blocks.add_module(f'sequencer{idx}', Sequencer(out_dims[idx+1], out_dims[idx], mlp_ratio, depth))
-            self.blocks.add_module(f'upsample{idx}', Upsample(out_dims[idx+1], out_dims[idx], upscale))
-
-    def forward(self, x: torch.FloatTensor) -> torch.FloatTensor:
-        x = self.blocks(x)
-        x = rearrange(x, 'b h w c -> b c h w')
-        
-        return x
-
-    def get_last_layer(self) -> nn.Parameter:
-        return self.blocks.upsample0.conv.weight
