@@ -156,7 +156,7 @@ class VQLPIPSWithDiscriminator(nn.Module):
                    "{}/logits_fake".format(split): logits_fake.detach().mean()
                    }
 
-            if self.training and global_step % 16 == 0:
+            if self.training and disc_factor and global_step % 16 == 0:
                 gradients, = torch.autograd.grad(outputs=logits_real.sum(), inputs=inputs, create_graph=True)
                 gradients = gradients.view(inputs.shape[0], -1)
 
