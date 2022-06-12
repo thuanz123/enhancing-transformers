@@ -5,7 +5,7 @@
 # ------------------------------------------------------------------------------------
 
 import PIL
-from typing import Any, Tuple, Union
+from typing import Any, Tuple, Union, Optional, Callable
 
 import torch
 from torchvision import transforms as T
@@ -29,7 +29,8 @@ class ImageNetTrain(ImageNetBase):
                  resize_ratio: float = 0.75) -> None:
 
         transform = T.Compose([
-            T.RandomResizedCrop(image_size, scale=(resize_ratio, 1.), ratio=(1., 1.)),
+            T.Resize(resolution),
+            T.RandomCrop(resolution),
             T.RandomHorizontalFlip(),
             T.ToTensor()
         ])
@@ -46,6 +47,7 @@ class ImageNetValidation(ImageNetBase):
         
         transform = T.Compose([
             T.Resize(resolution),
+            T.CenterCrop(resolution),
             T.ToTensor()
         ])
         
