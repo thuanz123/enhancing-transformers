@@ -128,7 +128,7 @@ class ViTDecoder(nn.Module):
         self.patch_dim = channels * patch_height * patch_width
 
         self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim)
-        self.de_pos_embedding = nn.Parameter(torch.randn(1, self.num_patches, dim))        
+        self.de_pos_embedding = nn.Parameter(torch.zeros(1, self.num_patches, dim))        
         self.to_pixel = nn.Sequential(OrderedDict([
             ('reshape', Rearrange('b (h w) c -> b c h w', h=image_height // patch_height)),
             ('conv_out', nn.ConvTranspose2d(dim, channels, kernel_size=patch_size, stride=patch_size))
