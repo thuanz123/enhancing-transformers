@@ -151,11 +151,11 @@ class ViTVQ(pl.LightningModule):
 
     def configure_optimizers(self) -> Tuple[List, List]:
         lr = self.learning_rate
-        optim_groups = list(self.encoder.named_parameters()) + \
-                       list(self.decoder.named_parameters()) + \
-                       list(self.pre_quant.named_parameters()) + \
-                       list(self.post_quant.named_parameters()) + \
-                       list(self.quantizer.named_parameters())
+        optim_groups = list(self.encoder.parameters()) + \
+                       list(self.decoder.parameters()) + \
+                       list(self.pre_quant.parameters()) + \
+                       list(self.post_quant.parameters()) + \
+                       list(self.quantizer.parameters())
         
         optimizers = [torch.optim.AdamW(optim_groups, lr=lr, betas=(0.9, 0.99), weight_decay=1e-4)]
         schedulers = []
