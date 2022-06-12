@@ -20,7 +20,7 @@ class ImageNetBase(ImageNet):
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         sample, target = super().__getitem__(index)
 
-        return {'image': sample, 'class': target.unsqueeze(-1)}
+        return {'image': sample, 'class': torch.tensor([target])}
 
 
 class ImageNetTrain(ImageNetBase):
@@ -34,7 +34,7 @@ class ImageNetTrain(ImageNetBase):
             T.ToTensor()
         ])
         
-        super().__init__(root=root, split='train', transform)
+        super().__init__(root=root, split='train', transform=transform)
         
 
 class ImageNetValidation(ImageNetBase):
@@ -49,4 +49,4 @@ class ImageNetValidation(ImageNetBase):
             T.ToTensor()
         ])
         
-        super().__init__(root=root, split='val', transform)
+        super().__init__(root=root, split='val', transform=transform)
