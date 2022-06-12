@@ -1,47 +1,52 @@
 # ------------------------------------------------------------------------------------
 # Enhancing Transformers
 # Copyright (c) 2022 Thuan H. Nguyen. All Rights Reserved.
-# Licensed under the MIT License [see LICENSE for details]
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------------------
 
 import PIL
-from typing import Any, Tuple, Union, Optional, Callable
+from typing import Any, Tuple, Union
 
 import torch
 from torchvision import transforms as T
-from torchvision.datasets import ImageFolder
+from torchvision.datasets import ImageNet
 
 
-class ImageNetBase(ImageFolder):
+class ImageNetBase(ImageNet):
     def __init__(self, root: str, split: str,
                  transform: Optional[Callable] = None) -> None:
-        root = Path(root)/'imagenet-object-localization-challenge/ILSVRC/Data/CLS-LOC'/split
-        super().__init__(root=root, transform=transform)
+        super().__init__(root=root, split='train', transform=transform)
         
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
-        image, target = super().__getitem__(index)
+        sample, target = super().__getitem__(index)
 
-        return {'image': image, 'class': torch.tensor([target])}
+        return {'image': sample, 'class': target.unsqueeze(-1)}
 
 
 class ImageNetTrain(ImageNetBase):
-    def __init__(self, root: str, resolution: Union[Tuple[int, int], int] = 256) -> None:
+    def __init__(self, root: str,
+                 resolution: Union[Tuple[int, int], int] = 256,
+                 resize_ratio: float = 0.75) -> None:
+
         transform = T.Compose([
-            T.Resize(resolution),
-            T.RandomCrop(resolution),
+            T.RandomResizedCrop(image_size, scale=(resize_ratio, 1.), ratio=(1., 1.)),
             T.RandomHorizontalFlip(),
             T.ToTensor()
         ])
         
-        super().__init__(root=root, split='train',  transform=transform)
-
+        super().__init__(root=root, split='train', transform)
+        
 
 class ImageNetValidation(ImageNetBase):
-    def __init__(self, root: str, resolution: Union[Tuple[int, int], int] = 256) -> None:
+    def __init__(self, root: str,
+                 resolution: Union[Tuple[int, int], int] = 256,) -> None:
+
+        if isinstance(resolution, int):
+            resolution = (resolution, resolution)
+        
         transform = T.Compose([
             T.Resize(resolution),
-            T.CenterCrop(resolution),
             T.ToTensor()
         ])
         
-        super().__init__(root=root, split='val',  transform=transform)
+        super().__init__(root=root, split='val', transform)
