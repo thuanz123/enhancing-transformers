@@ -5,7 +5,7 @@
 # ------------------------------------------------------------------------------------
 
 import PIL
-from typing import Any, Tuple, Union
+from typing import Any, Tuple, Union, Optional, Callable
 
 import torch
 from torchvision import transforms as T
