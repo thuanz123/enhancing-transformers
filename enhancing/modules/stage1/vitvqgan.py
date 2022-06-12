@@ -150,65 +150,14 @@ class ViTVQ(pl.LightningModule):
         return self.log_dict
 
     def configure_optimizers(self) -> Tuple[List, List]:
-        """
-        Following minGPT:
-        This long function is unfortunately doing something very simple and is being very defensive:
-        We are separating out all parameters of the model into two buckets: those that will experience
-        weight decay for regularization and those that won't (biases, and layernorm/embedding weights).
-        We are then returning the PyTorch optimizer object.
-        """
-        # separate out all parameters to those that will and won't experience regularizing weight decay
-        decay = set()
-        no_decay = set()
-        
-        list_modules = list(self.encoder.named_modules()) + \
-                       list(self.decoder.named_modules()) + \
-                       list(self.pre_quant.named_modules()) + \
-                       list(self.post_quant.named_modules()) + \
-                       list(self.quantizer.named_modules())
-        list_parameters = list(self.encoder.named_parameters()) + \
-                          list(self.decoder.named_parameters()) + \
-                          list(self.pre_quant.named_parameters()) + \
-                          list(self.post_quant.named_parameters()) + \
-                          list(self.quantizer.named_parameters())
-        
-        whitelist_weight_modules = (torch.nn.Linear, torch.nn.Conv2d, torch.nn.ConvTranspose2d)
-        blacklist_weight_modules = (torch.nn.LayerNorm, torch.nn.Embedding)
-        
-        for mn, m in list_modules:
-            for pn, p in m.named_parameters():
-                fpn = '%s.%s' % (mn, pn) if mn else pn # full param name
-
-                if pn.endswith('bias'):
-                    # all biases will not be decayed
-                    no_decay.add(fpn)
-                elif pn.endswith('weight') and isinstance(m, whitelist_weight_modules):
-                    # weights of whitelist modules will be weight decayed
-                    decay.add(fpn)
-                elif pn.endswith('weight') and isinstance(m, blacklist_weight_modules):
-                    # weights of blacklist modules will NOT be weight decayed
-                    no_decay.add(fpn)
-
-        # special case the position embedding parameter in the root GPT module as not decayed
-        no_decay.add('en_pos_embedding')
-        no_decay.add('de_pos_embedding')
-        
-        # validate that we considered every parameter
-        param_dict = {pn: p for pn, p in list_parameters}
-        inter_params = decay & no_decay 
-        union_params = decay | no_decay
-        assert len(inter_params) == 0, "parameters %s made it into both decay/no_decay sets!" % (str(inter_params), )
-        assert len(param_dict.keys() - union_params) == 0, "parameters %s were not separated into either decay/no_decay/ignored set!" \
-                                                    % (str(param_dict.keys() - union_params), )
-
-        # create the pytorch optimizer object
         lr = self.learning_rate
-        optim_groups = [
-            {"params": [param_dict[pn] for pn in sorted(list(decay))], "weight_decay": 1e-4},
-            {"params": [param_dict[pn] for pn in sorted(list(no_decay))], "weight_decay": 0.0},
-        ]
+        optim_groups = list(self.encoder.named_parameters()) + \
+                       list(self.decoder.named_parameters()) + \
+                       list(self.pre_quant.named_parameters()) + \
+                       list(self.post_quant.named_parameters()) + \
+                       list(self.quantizer.named_parameters())
         
-        optimizers = [torch.optim.AdamW(optim_groups, lr=lr, betas=(0.9, 0.99))]
+        optimizers = [torch.optim.AdamW(optim_groups, lr=lr, betas=(0.9, 0.99), weight_decay=1e-4)]
         schedulers = []
         
         if hasattr(self.loss, 'discriminator'):
