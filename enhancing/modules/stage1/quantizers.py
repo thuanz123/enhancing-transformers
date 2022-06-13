@@ -15,8 +15,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ...utils.general import get_obj_from_str, initialize_from_config
-
 
 class BaseQuantizer(nn.Module):
     def __init__(self, embed_dim: int, n_embed: int, straight_through: bool = True, use_norm: bool = True,
