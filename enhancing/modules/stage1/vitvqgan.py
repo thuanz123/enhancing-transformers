@@ -18,8 +18,8 @@ from torchvision import transforms as T
 import pytorch_lightning as pl
 
 from .layers import ViTEncoder as Encoder, ViTDecoder as Decoder
-from .quantizers import *
-from ...utils.general import get_obj_from_str, initialize_from_config
+from .quantizers import VectorQuantizer, GumbelQuantizer
+from ...utils.general import initialize_from_config
 
 
 class ViTVQ(pl.LightningModule):
