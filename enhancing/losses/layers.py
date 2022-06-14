@@ -152,7 +152,6 @@ class EqualConv2d(nn.Module):
 
         if bias:
             self.bias = nn.Parameter(torch.zeros(out_channel))
-
         else:
             self.bias = None
 
@@ -176,24 +175,21 @@ class EqualConv2d(nn.Module):
 class EqualLinear(nn.Module):
     def __init__(self, in_dim: int, out_dim: int,
                  bias: bool = True, bias_init: float = 0,
-                 lr_mul: float = 1, activation: bool = False):
+                 activation: bool = False):
         super().__init__()
 
-        self.weight = nn.Parameter(torch.randn(out_dim, in_dim).div_(lr_mul))
+        self.weight = nn.Parameter(torch.randn(out_dim, in_dim))
 
         if bias:
             self.bias = nn.Parameter(torch.zeros(out_dim).fill_(bias_init))
-
         else:
             self.bias = None
 
         self.activation = activation
-
-        self.scale = (1 / sqrt(in_dim)) * lr_mul
-        self.lr_mul = lr_mul
+        self.scale = (1 / sqrt(in_dim))
 
     def forward(self, input: torch.FloatTensor) -> torch.FloatTensor:
-        out = F.linear(input, self.weight * self.scale, bias=self.bias * self.lr_mul)
+        out = F.linear(input, self.weight * self.scale, bias=self.bias)
 
         if self.activation:
             out = F.leaky_relu(out, negative_slope=0.2) * sqrt(2)
@@ -319,7 +315,7 @@ class StyleDiscriminator(nn.Module):
         self.final_conv = EqualConv2d(filters[-1]+1, filters[-1], 3, padding=1, activation=True)
         self.final_linear = nn.Sequential(
             EqualLinear(filters[-1] * 2 * 2, filters[-1], activation=True),
-            EqualLinear(filters[-1], 1),
+            EqualLinear(filters[-1], 1, bias=False),
         )
 
     def forward(self, x):
