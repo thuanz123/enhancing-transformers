@@ -15,7 +15,7 @@ from torchvision.datasets import ImageNet
 class ImageNetBase(ImageNet):
     def __init__(self, root: str, split: str,
                  transform: Optional[Callable] = None) -> None:
-        super().__init__(root=root, split='train', transform=transform)
+        super().__init__(root=root, split=split, transform=transform)
         
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         sample, target = super().__getitem__(index)
