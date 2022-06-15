@@ -167,7 +167,7 @@ class EqualConv2d(nn.Module):
         )
 
         if self.activation:
-            out = F.leaky_relu(out, negative_slope=0.2) * 2**0.5
+            out = F.leaky_relu(out, negative_slope=0.2) * sqrt(2)
 
         return out
 
@@ -212,16 +212,16 @@ class Blur(nn.Module):
 class StyleBlock(nn.Module):
     def __init__(self, input_channels, filters, downsample=True):
         super().__init__()
-        self.conv_res = EqualConv2d(input_channels, filters, 1, stride = (2 if downsample else 1))
+        self.conv_res = EqualConv2d(input_channels, filters, kernel_size=1, stride=(2 if downsample else 1))
 
         self.net = nn.Sequential(
-            EqualConv2d(input_channels, filters, 3, padding=1, activation=True),
-            EqualConv2d(filters, filters, 3, padding=1, activation=True),
+            EqualConv2d(input_channels, filters, kernel_size=3, padding=1, activation=True),
+            EqualConv2d(filters, filters, kernel_size=3, padding=1, activation=True),
         )
 
         self.downsample = nn.Sequential(
             Blur([1,3,3,1]),
-            EqualConv2d(filters, filters, 3, padding = 1, stride = 2)
+            EqualConv2d(filters, filters, kernel_size=3, stride=2, padding=1)
         ) if downsample else None
 
     def forward(self, x):
@@ -312,7 +312,7 @@ class StyleDiscriminator(nn.Module):
         self.stddev_group = 4
         self.stddev_feat = 1
         
-        self.final_conv = EqualConv2d(filters[-1]+1, filters[-1], 3, padding=1, activation=True)
+        self.final_conv = EqualConv2d(filters[-1]+1, filters[-1], kernel_size=3, padding=1, activation=True)
         self.final_linear = nn.Sequential(
             EqualLinear(filters[-1] * 2 * 2, filters[-1], activation=True),
             EqualLinear(filters[-1], 1, bias=False),
