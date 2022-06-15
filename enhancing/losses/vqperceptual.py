@@ -143,26 +143,26 @@ class VQLPIPSWithDiscriminator(nn.Module):
 
         if optimizer_idx == 1:
             # second pass for discriminator update
-            inputs.requires_grad_()
+            disc_factor = 1 if global_step >= self.discriminator_iter_start else 0
+            do_r1 = self.training and bool(disc_factor) and global_step % 16 == 0
 
-            logits_real = self.discriminator(inputs)
+            logits_real = self.discriminator(inputs.detach().requires_grad_(do_r1))
             logits_fake = self.discriminator(reconstructions.detach())
             
-            disc_factor = 1 if global_step >= self.discriminator_iter_start else 0
             d_loss = disc_factor * self.disc_loss(logits_fake, logits_real)
-
-            log = {"{}/disc_loss".format(split): d_loss.clone().detach(),
-                   "{}/logits_real".format(split): logits_real.detach().mean(),
-                   "{}/logits_fake".format(split): logits_fake.detach().mean()
-                   }
-
-            if self.training and disc_factor and global_step % 16 == 0:
+            if do_r1:
                 gradients, = torch.autograd.grad(outputs=logits_real.sum(), inputs=inputs, create_graph=True)
                 gradients = gradients.view(inputs.shape[0], -1)
 
                 gradients_norm = gradients.norm(2, dim=1).pow(2).mean()
                 d_loss += 10 * gradients_norm/2
 
+            log = {"{}/disc_loss".format(split): d_loss.detach(),
+                   "{}/logits_real".format(split): logits_real.detach().mean(),
+                   "{}/logits_fake".format(split): logits_fake.detach().mean()
+                   }
+
+            if do_r1:
                 log["{}/r1_reg".format(split)] = gradients_norm.detach()
             
             return d_loss, log
