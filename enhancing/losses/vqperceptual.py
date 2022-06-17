@@ -146,7 +146,7 @@ class VQLPIPSWithDiscriminator(nn.Module):
             disc_factor = 1 if global_step >= self.discriminator_iter_start else 0
             do_r1 = self.training and bool(disc_factor) and global_step % 16 == 0
 
-            logits_real = self.discriminator(inputs.detach().requires_grad_(do_r1))
+            logits_real = self.discriminator(inputs.requires_grad_(do_r1))
             logits_fake = self.discriminator(reconstructions.detach())
             
             d_loss = disc_factor * self.disc_loss(logits_fake, logits_real)
