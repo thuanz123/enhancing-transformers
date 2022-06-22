@@ -2,8 +2,8 @@
 # Modified from Taming Transformers (https://github.com/CompVis/taming-transformers)
 # Copyright (c) 2020 Patrick Esser and Robin Rombach and Björn Ommer. All Rights Reserved.
 # ------------------------------------------------------------------------------------
-# Modified from StyleGAN-Pytorch (https://github.com/lucidrains/stylegan2-pytorch)
-# Copyright (c) 2020 Phil Wang. All Rights Reserved.
+# Modified from StyleGAN2-Pytorch (https://github.com/rosinality/stylegan2-pytorch)
+# Copyright (c) 2019 Kim Seonghyeon. All Rights Reserved.
 # ------------------------------------------------------------------------------------
 
 
@@ -15,6 +15,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from kornia.filters import filter2d
+
+from .op import FusedLeakyReLU, fused_leaky_relu, upfirdn2d, conv2d_gradfix
 
 
 def hinge_d_loss(logits_fake: torch.FloatTensor, logits_real: Optional[torch.FloatTensor] = None) -> torch.FloatTensor:
@@ -135,30 +137,43 @@ class ActNorm(nn.Module):
         return h
 
 
-class EqualConv2d(nn.Module):
-    def __init__(self, in_channel: int, out_channel: int,
-                 kernel_size: int, stride: int = 1,
-                 padding: int = 0, bias: bool = True,
-                 activation: bool = False) -> None:
+class Blur(nn.Module):
+    def __init__(self, kernel, pad, upsample_factor=1):
         super().__init__()
 
-        self.weight = nn.Parameter(
-            torch.randn(out_channel, in_channel, kernel_size, kernel_size)
-        )
+        kernel = torch.tensor(kernel, dtype=torch.float32)
+        if kernel.ndim == 1:
+            kernel = kernel[None, :] * kernel[:, None]
+
+        kernel /= kernel.sum()
+
+        if upsample_factor > 1:
+            kernel = kernel * (upsample_factor ** 2)
+
+        self.register_buffer("kernel", kernel)
+
+        self.pad = pad
+
+    def forward(self, input):
+        out = upfirdn2d(input, self.kernel, pad=self.pad)
+
+        return out
+
+
+class EqualConv2d(nn.Module):
+    def __init__(self, in_channel, out_channel, kernel_size, stride=1, padding=0, bias=True):
+        super().__init__()
+
+        self.weight = nn.Parameter(torch.randn(out_channel, in_channel, kernel_size, kernel_size))
+        self.bias = nn.Parameter(torch.zeros(out_channel)) if bias else None
+        
         self.scale = 1 / sqrt(in_channel * kernel_size ** 2)
 
         self.stride = stride
         self.padding = padding
 
-        if bias:
-            self.bias = nn.Parameter(torch.zeros(out_channel))
-        else:
-            self.bias = None
-
-        self.activation = activation
-
-    def forward(self, input: torch.FloatTensor) -> torch.FloatTensor:
-        out = F.conv2d(
+    def forward(self, input):
+        out = conv2d_gradfix.conv2d(
             input,
             self.weight * self.scale,
             bias=self.bias,
@@ -166,74 +181,87 @@ class EqualConv2d(nn.Module):
             padding=self.padding,
         )
 
-        if self.activation:
-            out = F.leaky_relu(out, negative_slope=0.2) * sqrt(2)
-
         return out
 
 
 class EqualLinear(nn.Module):
-    def __init__(self, in_dim: int, out_dim: int,
-                 bias: bool = True, bias_init: float = 0,
-                 activation: bool = False):
+    def __init__(
+        self, in_dim, out_dim, bias=True, bias_init=0, lr_mul=1, activation=None
+    ):
         super().__init__()
 
-        self.weight = nn.Parameter(torch.randn(out_dim, in_dim))
-
-        if bias:
-            self.bias = nn.Parameter(torch.zeros(out_dim).fill_(bias_init))
-        else:
-            self.bias = None
+        self.weight = nn.Parameter(torch.randn(out_dim, in_dim).div_(lr_mul))
+        self.bias = nn.Parameter(torch.zeros(out_dim).fill_(bias_init)) if bias else None
 
         self.activation = activation
-        self.scale = (1 / sqrt(in_dim))
 
-    def forward(self, input: torch.FloatTensor) -> torch.FloatTensor:
-        out = F.linear(input, self.weight * self.scale, bias=self.bias)
+        self.scale = (1 / sqrt(in_dim)) * lr_mul
+        self.lr_mul = lr_mul
 
+    def forward(self, input):
         if self.activation:
-            out = F.leaky_relu(out, negative_slope=0.2) * sqrt(2)
+            out = F.linear(input, self.weight * self.scale)
+            out = fused_leaky_relu(out, self.bias * self.lr_mul)
+
+        else:
+            out = F.linear(
+                input, self.weight * self.scale, bias=self.bias * self.lr_mul
+            )
 
         return out
 
 
-class Blur(nn.Module):
-    def __init__(self, blur_kernel: List[int]) -> None:
-        super().__init__()
-        self.register_buffer('kernel', torch.Tensor(blur_kernel))
-        
-    def forward(self, input: torch.FloatTensor) -> torch.FloatTensor:
-        kernel = self.kernel
-        kernel = kernel[None, None, :] * kernel[None, :, None]
+class ConvLayer(nn.Sequential):
+    def __init__(self, in_channel, out_channel, kernel_size, downsample=False, blur_kernel=[1, 3, 3, 1], bias=True, activate=True):
+        layers = []
 
-        return filter2d(input, kernel, normalized=True)
+        if downsample:
+            factor = 2
+            p = (len(blur_kernel) - factor) + (kernel_size - 1)
+            pad0 = (p + 1) // 2
+            pad1 = p // 2
+
+            layers.append(Blur(blur_kernel, pad=(pad0, pad1)))
+
+            stride = 2
+            self.padding = 0
+        else:
+            stride = 1
+            self.padding = kernel_size // 2
+
+        layers.append(
+            EqualConv2d(
+                in_channel, out_channel, 
+                kernel_size, padding=self.padding, 
+                stride=stride, bias=bias and not activate
+            )
+        )
+
+        if activate:
+            layers.append(FusedLeakyReLU(out_channel, bias=bias))
+
+        super().__init__(*layers)
 
 
 class StyleBlock(nn.Module):
-    def __init__(self, input_channels, filters, downsample=True):
+    def __init__(self, in_channel, out_channel, blur_kernel=[1, 3, 3, 1]):
         super().__init__()
-        self.conv_res = EqualConv2d(input_channels, filters, kernel_size=1, stride=(2 if downsample else 1))
 
-        self.net = nn.Sequential(
-            EqualConv2d(input_channels, filters, kernel_size=3, padding=1, activation=True),
-            EqualConv2d(filters, filters, kernel_size=3, padding=1, activation=True),
+        self.conv1 = ConvLayer(in_channel, in_channel, 3)
+        self.conv2 = ConvLayer(in_channel, out_channel, 3, downsample=True)
+
+        self.skip = ConvLayer(
+            in_channel, out_channel, 1, downsample=True, activate=False, bias=False
         )
 
-        self.downsample = nn.Sequential(
-            Blur([1,3,3,1]),
-            EqualConv2d(filters, filters, kernel_size=3, stride=2, padding=1)
-        ) if downsample else None
+    def forward(self, input):
+        out = self.conv1(input)
+        out = self.conv2(out)
 
-    def forward(self, x):
-        res = self.conv_res(x)
-        x = self.net(x)
-        
-        if self.downsample is not None:
-            x = self.downsample(x)
-            
-        x = (x + res) * (1 / sqrt(2))
+        skip = self.skip(input)
+        out = (out + skip) / sqrt(2)
 
-        return x
+        return out
 
 
 class PatchDiscriminator(nn.Module):
@@ -292,30 +320,39 @@ class PatchDiscriminator(nn.Module):
 
 
 class StyleDiscriminator(nn.Module):
-    def __init__(self, image_size:int = 256, network_capacity: int = 16, fmap_max: int = 512):
+    def __init__(self, size=256, channel_multiplier=2, blur_kernel=[1, 3, 3, 1]):
         super().__init__()
-        num_layers = int(log2(image_size) - 1)
-        filters = [3] + [(network_capacity * 4) * (2 ** i) for i in range(num_layers + 1)]
 
-        set_fmap_max = partial(min, fmap_max)
-        filters = list(map(set_fmap_max, filters))
-        chan_in_out = list(zip(filters[:-1], filters[1:]))
+        channels = {
+            4: 512,
+            8: 512,
+            16: 512,
+            32: 512,
+            64: 256 * channel_multiplier,
+            128: 128 * channel_multiplier,
+            256: 64 * channel_multiplier,
+            512: 32 * channel_multiplier,
+            1024: 16 * channel_multiplier,
+        }
 
-        blocks = []
-        for ind, (in_chan, out_chan) in enumerate(chan_in_out):
-            is_not_last = ind != (len(chan_in_out) - 1)
+        log_size = int(log2(size))
+        in_channel = channels[size]
 
-            block = StyleBlock(in_chan, out_chan, downsample=is_not_last)
-            blocks.append(block)
+        blocks = [ConvLayer(3, channels[size], 1)]
+        for i in range(log_size, 2, -1):
+            out_channel = channels[2 ** (i - 1)]
+            blocks.append(StyleBlock(in_channel, out_channel, blur_kernel))
+            in_channel = out_channel
+
         self.blocks = nn.Sequential(*blocks)
 
         self.stddev_group = 4
         self.stddev_feat = 1
-        
-        self.final_conv = EqualConv2d(filters[-1]+1, filters[-1], kernel_size=3, padding=1, activation=True)
+
+        self.final_conv = ConvLayer(in_channel + 1, channels[4], 3)
         self.final_linear = nn.Sequential(
-            EqualLinear(filters[-1] * 2 * 2, filters[-1], activation=True),
-            EqualLinear(filters[-1], 1, bias=False),
+            EqualLinear(channels[4] * 4 * 4, channels[4], activation="fused_lrelu"),
+            EqualLinear(channels[4], 1),
         )
 
     def forward(self, x):
