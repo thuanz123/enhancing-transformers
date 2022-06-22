@@ -9,6 +9,7 @@ dependencies:
   - pytorch=1.7.1
   - torchvision=0.8.2
   - numpy=1.19.2
+  - ninja=1.10.2
   - pip:
     - ftfy==6.1.1
     - lpips==0.1.4
