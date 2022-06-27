@@ -65,7 +65,9 @@ class VQLPIPSWithDiscriminator(nn.Module):
                  loggaussian_weight: float = 1.0,
                  perceptual_weight: float = 1.0,
                  adversarial_weight: float = 1.0,
-                 use_adaptive_adv: bool = True) -> None:
+                 use_adaptive_adv: bool = True,
+                 r1_gamma: float = 10,
+                 do_r1_every: int = 16) -> None:
         
         super().__init__()
         assert disc_loss in ["hinge", "vanilla", "least_square"], f"Unknown GAN loss '{disc_loss}'."
@@ -87,6 +89,8 @@ class VQLPIPSWithDiscriminator(nn.Module):
 
         self.adversarial_weight = adversarial_weight
         self.use_adaptive_adv = use_adaptive_adv
+        self.r1_gamma = r1_gamma
+        self.do_r1_every = do_r1_every
 
     def calculate_adaptive_factor(self, nll_loss: torch.FloatTensor,
                                   g_loss: torch.FloatTensor, last_layer: nn.Module) -> torch.FloatTensor:
@@ -144,7 +148,7 @@ class VQLPIPSWithDiscriminator(nn.Module):
         if optimizer_idx == 1:
             # second pass for discriminator update
             disc_factor = 1 if global_step >= self.discriminator_iter_start else 0
-            do_r1 = self.training and bool(disc_factor) and global_step % 16 == 0
+            do_r1 = self.training and bool(disc_factor) and global_step % self.do_r1_every == 0
 
             logits_real = self.discriminator(inputs.requires_grad_(do_r1))
             logits_fake = self.discriminator(reconstructions.detach())
@@ -155,7 +159,7 @@ class VQLPIPSWithDiscriminator(nn.Module):
                 gradients = gradients.view(inputs.shape[0], -1)
 
                 gradients_norm = gradients.norm(2, dim=1).pow(2).mean()
-                d_loss += 10 * gradients_norm/2
+                d_loss += self.r1_gamma * self.do_r1_every * gradients_norm/2
 
             log = {"{}/disc_loss".format(split): d_loss.detach(),
                    "{}/logits_real".format(split): logits_real.detach().mean(),
