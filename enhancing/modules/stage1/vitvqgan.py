@@ -104,7 +104,7 @@ class ViTVQ(pl.LightningModule):
 
         if optimizer_idx == 0:
             # autoencoder
-            aeloss, log_dict_ae = self.loss(qloss, x, xrec, optimizer_idx, self.global_step,
+            aeloss, log_dict_ae = self.loss(qloss, x, xrec, optimizer_idx, self.global_step, batch_idx,
                                             last_layer=self.decoder.get_last_layer(), split="train")
 
             self.log("train/total_loss", aeloss, prog_bar=True, logger=True, on_step=True, on_epoch=True)
@@ -116,7 +116,7 @@ class ViTVQ(pl.LightningModule):
 
         if optimizer_idx == 1:
             # discriminator
-            discloss, log_dict_disc = self.loss(qloss, x, xrec, optimizer_idx, self.global_step,
+            discloss, log_dict_disc = self.loss(qloss, x, xrec, optimizer_idx, self.global_step, batch_idx,
                                                 last_layer=self.decoder.get_last_layer(), split="train")
             
             self.log("train/disc_loss", discloss, prog_bar=True, logger=True, on_step=True, on_epoch=True)
@@ -129,7 +129,7 @@ class ViTVQ(pl.LightningModule):
     def validation_step(self, batch: Tuple[Any, Any], batch_idx: int) -> Dict:
         x = self.get_input(batch, self.image_key)
         xrec, qloss = self(x)
-        aeloss, log_dict_ae = self.loss(qloss, x, xrec, 0, self.global_step,
+        aeloss, log_dict_ae = self.loss(qloss, x, xrec, 0, self.global_step, batch_idx,
                                         last_layer=self.decoder.get_last_layer(), split="val")
 
         rec_loss = log_dict_ae["val/rec_loss"]
@@ -142,7 +142,7 @@ class ViTVQ(pl.LightningModule):
         self.log_dict(log_dict_ae, prog_bar=False, logger=True, on_step=True, on_epoch=True)
 
         if hasattr(self.loss, 'discriminator'):
-            discloss, log_dict_disc = self.loss(qloss, x, xrec, 1, self.global_step,
+            discloss, log_dict_disc = self.loss(qloss, x, xrec, 1, self.global_step, batch_idx,
                                                 last_layer=self.decoder.get_last_layer(), split="val")
             
             self.log_dict(log_dict_disc, prog_bar=False, logger=True, on_step=True, on_epoch=True)
