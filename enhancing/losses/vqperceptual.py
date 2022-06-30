@@ -161,11 +161,12 @@ class VQLPIPSWithDiscriminator(nn.Module):
                 gradients_norm = gradients.norm(2, dim=1).pow(2).mean()
                 d_loss += self.r1_gamma * self.do_r1_every * gradients_norm/2
 
-                log["{}/r1_reg".format(split)] = gradients_norm.detach()
-
             log = {"{}/disc_loss".format(split): d_loss.detach(),
                    "{}/logits_real".format(split): logits_real.detach().mean(),
-                   "{}/logits_fake".format(split): logits_fake.detach().mean()
+                   "{}/logits_fake".format(split): logits_fake.detach().mean(),
                    }
+
+            if do_r1:
+                log["{}/r1_reg".format(split)] = gradients_norm.detach()
             
             return d_loss, log
