@@ -95,7 +95,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 <!-- CONTACT -->
 ## Contact
 
-Thuan H. Nguyen - [@leejohnthuan](https://twitter.com/leejohnthuan) - thuan@goback.world
+Thuan H. Nguyen - [@leejohnthuan](https://twitter.com/leejohnthuan) - leejohnthuan@gmail.com
 
 
 <!-- ACKNOWLEDGMENTS -->
