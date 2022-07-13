@@ -8,6 +8,7 @@
 # ------------------------------------------------------------------------------------
 
 import math
+import numpy as np
 from typing import Union, Tuple, List
 from collections import OrderedDict
 
@@ -17,13 +18,62 @@ import torch.nn.functional as F
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
 
+def get_2d_sincos_pos_embed(embed_dim, grid_size):
+    """
+    grid_size: int or (int, int) of the grid height and width
+    return:
+    pos_embed: [grid_size*grid_size, embed_dim] or [1+grid_size*grid_size, embed_dim] (w/ or w/o cls_token)
+    """
+    grid_size = (grid_size, grid_size) if type(grid_size) != tuple else grid_size
+    grid_h = np.arange(grid_size[0], dtype=np.float32)
+    grid_w = np.arange(grid_size[1], dtype=np.float32)
+    grid = np.meshgrid(grid_w, grid_h)  # here w goes first
+    grid = np.stack(grid, axis=0)
+
+    grid = grid.reshape([2, 1, grid_size[0], grid_size[1]])
+    pos_embed = get_2d_sincos_pos_embed_from_grid(embed_dim, grid)
+
+    return pos_embed
+
+
+def get_2d_sincos_pos_embed_from_grid(embed_dim, grid):
+    assert embed_dim % 2 == 0
+
+    # use half of dimensions to encode grid_h
+    emb_h = get_1d_sincos_pos_embed_from_grid(embed_dim // 2, grid[0])  # (H*W, D/2)
+    emb_w = get_1d_sincos_pos_embed_from_grid(embed_dim // 2, grid[1])  # (H*W, D/2)
+
+    emb = np.concatenate([emb_h, emb_w], axis=1) # (H*W, D)
+    return emb
+
+
+def get_1d_sincos_pos_embed_from_grid(embed_dim, pos):
+    """
+    embed_dim: output dimension for each position
+    pos: a list of positions to be encoded: size (M,)
+    out: (M, D)
+    """
+    assert embed_dim % 2 == 0
+    omega = np.arange(embed_dim // 2, dtype=np.float)
+    omega /= embed_dim / 2.
+    omega = 1. / 10000**omega  # (D/2,)
+
+    pos = pos.reshape(-1)  # (M,)
+    out = np.einsum('m,d->md', pos, omega)  # (M, D/2), outer product
+
+    emb_sin = np.sin(out) # (M, D/2)
+    emb_cos = np.cos(out) # (M, D/2)
+
+    emb = np.concatenate([emb_sin, emb_cos], axis=1)  # (M, D)
+    return emb
+
 
 class PreNorm(nn.Module):
     def __init__(self, dim: int, fn: nn.Module) -> None:
         super().__init__()
         self.norm = nn.LayerNorm(dim)
         self.fn = fn
-        
+
     def forward(self, x: torch.FloatTensor, **kwargs) -> torch.FloatTensor:
         return self.fn(self.norm(x), **kwargs)
 
@@ -36,10 +86,10 @@ class FeedForward(nn.Module):
             nn.Tanh(),
             nn.Linear(hidden_dim, dim)
         )
-        
+
     def forward(self, x: torch.FloatTensor) -> torch.FloatTensor:
         return self.net(x)
-    
+
 
 class Attention(nn.Module):
     def __init__(self, dim: int, heads: int = 8, dim_head: int = 64) -> None:
@@ -81,7 +131,7 @@ class Transformer(nn.Module):
         for attn, ff in self.layers:
             x = attn(x) + x
             x = ff(x) + x
-            
+
         return x
 
 
@@ -95,22 +145,25 @@ class ViTEncoder(nn.Module):
                                     else (patch_size, patch_size)
 
         assert image_height % patch_height == 0 and image_width % patch_width == 0, 'Image dimensions must be divisible by the patch size.'
+        en_pos_embedding = get_2d_sincos_pos_embed(dim, (image_height // patch_height, image_width // patch_width))
 
         self.num_patches = (image_height // patch_height) * (image_width // patch_width)
         self.patch_dim = channels * patch_height * patch_width
-        
+
         self.to_patch_embedding = nn.Sequential(
             nn.Conv2d(channels, dim, kernel_size=patch_size, stride=patch_size),
             Rearrange('b c h w -> b (h w) c'),
         )
-        self.en_pos_embedding = nn.Parameter(torch.randn(1, self.num_patches, dim))
+        self.en_pos_embedding = nn.Parameter(torch.from_numpy(en_pos_embedding).float().unsqueeze(0), requires_grad=False)
         self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim)
+        self.norm = nn.LayerNorm(dim)
 
     def forward(self, img: torch.FloatTensor) -> torch.FloatTensor:
         x = self.to_patch_embedding(img)
         x += self.en_pos_embedding
+        x = self.transformer(x)
 
-        return self.transformer(x)
+        return self.norm(x)
 
 
 class ViTDecoder(nn.Module):
@@ -123,20 +176,23 @@ class ViTDecoder(nn.Module):
                                     else (patch_size, patch_size)
 
         assert image_height % patch_height == 0 and image_width % patch_width == 0, 'Image dimensions must be divisible by the patch size.'
+        de_pos_embedding = get_2d_sincos_pos_embed(dim, (image_height // patch_height, image_width // patch_width))
 
         self.num_patches = (image_height // patch_height) * (image_width // patch_width)
         self.patch_dim = channels * patch_height * patch_width
 
         self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim)
-        self.de_pos_embedding = nn.Parameter(torch.zeros(1, self.num_patches, dim))        
+        self.de_pos_embedding = nn.Parameter(torch.from_numpy(de_pos_embedding).float().unsqueeze(0), requires_grad=False)
+        self.norm = nn.LayerNorm(dim)
         self.to_pixel = nn.Sequential(OrderedDict([
             ('reshape', Rearrange('b (h w) c -> b c h w', h=image_height // patch_height)),
             ('conv_out', nn.ConvTranspose2d(dim, channels, kernel_size=patch_size, stride=patch_size))
         ]))
-                                      
+
     def forward(self, token: torch.FloatTensor) -> torch.FloatTensor:
         token += self.de_pos_embedding
         x = self.transformer(token)
+        x = self.norm(x)
 
         return self.to_pixel(x)
 
