@@ -17,6 +17,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config', type=str, required=True)
     parser.add_argument('-s', '--seed', type=int, default=0)
+    parser.add_argument('-nn', '--num_nodes', type=int, default=1)
     parser.add_argument('-ng', '--num_gpus', type=int, default=1)
     parser.add_argument('-u', '--update_every', type=int, default=1)
     parser.add_argument('-e', '--epochs', type=int, default=100)
@@ -34,11 +35,11 @@ if __name__ == '__main__':
     exp_config = OmegaConf.create({"name": args.config, "epochs": args.epochs, "update_every": args.update_every,
                                    "base_lr": args.base_lr, "use_amp": args.use_amp, "batch_frequency": args.batch_frequency,
                                    "max_images": args.max_images})
-                    
+
     # Build model
     model = initialize_from_config(config.model)
     model.learning_rate = exp_config.base_lr
-    
+
     # Setup callbacks
     callbacks, logger = setup_callbacks(exp_config, config)
 
@@ -51,6 +52,8 @@ if __name__ == '__main__':
                          precision=16 if exp_config.use_amp else 32,
                          callbacks=callbacks,
                          gpus=args.num_gpus,
+                         num_nodes=args.num_nodes,
+                         strategy="ddp" if args.num_nodes > 1 or args.num_gpus > 1 else None,
                          accumulate_grad_batches=exp_config.update_every,
                          logger=logger)
 
