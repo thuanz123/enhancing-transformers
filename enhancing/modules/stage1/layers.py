@@ -68,6 +68,17 @@ def get_1d_sincos_pos_embed_from_grid(embed_dim, pos):
     return emb
 
 
+def init_weights(m):
+    if isinstance(m, nn.Linear):
+        # we use xavier_uniform following official JAX ViT:
+        torch.nn.init.xavier_uniform_(m.weight)
+        if m.bias is not None:
+            nn.init.constant_(m.bias, 0)
+    elif isinstance(m, nn.LayerNorm):
+        nn.init.constant_(m.bias, 0)
+        nn.init.constant_(m.weight, 1.0)
+
+
 class PreNorm(nn.Module):
     def __init__(self, dim: int, fn: nn.Module) -> None:
         super().__init__()
@@ -158,6 +169,8 @@ class ViTEncoder(nn.Module):
         self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim)
         self.norm = nn.LayerNorm(dim)
 
+        self.apply(init_weights)
+
     def forward(self, img: torch.FloatTensor) -> torch.FloatTensor:
         x = self.to_patch_embedding(img)
         x += self.en_pos_embedding
@@ -185,9 +198,11 @@ class ViTDecoder(nn.Module):
         self.de_pos_embedding = nn.Parameter(torch.from_numpy(de_pos_embedding).float().unsqueeze(0), requires_grad=False)
         self.norm = nn.LayerNorm(dim)
         self.to_pixel = nn.Sequential(OrderedDict([
-            ('reshape', Rearrange('b (h w) c -> b c h w', h=image_height // patch_height)),
-            ('conv_out', nn.ConvTranspose2d(dim, channels, kernel_size=patch_size, stride=patch_size))
+            Rearrange('b (h w) c -> b c h w', h=image_height // patch_height),
+            nn.ConvTranspose2d(dim, channels, kernel_size=patch_size, stride=patch_size)
         ]))
+
+        self.apply(init_weights)
 
     def forward(self, token: torch.FloatTensor) -> torch.FloatTensor:
         token += self.de_pos_embedding
@@ -196,5 +211,5 @@ class ViTDecoder(nn.Module):
 
         return self.to_pixel(x)
 
-    def get_last_layer(self) -> nn.Parameter:
-        return self.to_pixel.conv_out.weight
+   def get_last_layer(self) -> nn.Parameter:
+        return self.to_pixel[-1].weight
