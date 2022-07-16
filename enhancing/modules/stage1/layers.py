@@ -197,10 +197,10 @@ class ViTDecoder(nn.Module):
         self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim)
         self.de_pos_embedding = nn.Parameter(torch.from_numpy(de_pos_embedding).float().unsqueeze(0), requires_grad=False)
         self.norm = nn.LayerNorm(dim)
-        self.to_pixel = nn.Sequential(OrderedDict([
+        self.to_pixel = nn.Sequential(
             Rearrange('b (h w) c -> b c h w', h=image_height // patch_height),
             nn.ConvTranspose2d(dim, channels, kernel_size=patch_size, stride=patch_size)
-        ]))
+        )
 
         self.apply(init_weights)
 
@@ -211,5 +211,5 @@ class ViTDecoder(nn.Module):
 
         return self.to_pixel(x)
 
-   def get_last_layer(self) -> nn.Parameter:
+    def get_last_layer(self) -> nn.Parameter:
         return self.to_pixel[-1].weight
