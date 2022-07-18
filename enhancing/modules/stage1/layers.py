@@ -77,6 +77,9 @@ def init_weights(m):
     elif isinstance(m, nn.LayerNorm):
         nn.init.constant_(m.bias, 0)
         nn.init.constant_(m.weight, 1.0)
+    elif isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
+        w = m.weight.data
+        torch.nn.init.xavier_uniform_(w.view([w.shape[0], -1]))
 
 
 class PreNorm(nn.Module):
@@ -137,13 +140,14 @@ class Transformer(nn.Module):
             layer = nn.ModuleList([PreNorm(dim, Attention(dim, heads=heads, dim_head=dim_head)),
                                    PreNorm(dim, FeedForward(dim, mlp_dim))])
             self.layers.append(layer)
+        self.norm = nn.LayerNorm(dim)
 
     def forward(self, x: torch.FloatTensor) -> torch.FloatTensor:
         for attn, ff in self.layers:
             x = attn(x) + x
             x = ff(x) + x
 
-        return x
+        return self.norm(x)
 
 
 class ViTEncoder(nn.Module):
@@ -167,7 +171,6 @@ class ViTEncoder(nn.Module):
         )
         self.en_pos_embedding = nn.Parameter(torch.from_numpy(en_pos_embedding).float().unsqueeze(0), requires_grad=False)
         self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim)
-        self.norm = nn.LayerNorm(dim)
 
         self.apply(init_weights)
 
@@ -176,7 +179,7 @@ class ViTEncoder(nn.Module):
         x += self.en_pos_embedding
         x = self.transformer(x)
 
-        return self.norm(x)
+        return x
 
 
 class ViTDecoder(nn.Module):
@@ -196,7 +199,6 @@ class ViTDecoder(nn.Module):
 
         self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim)
         self.de_pos_embedding = nn.Parameter(torch.from_numpy(de_pos_embedding).float().unsqueeze(0), requires_grad=False)
-        self.norm = nn.LayerNorm(dim)
         self.to_pixel = nn.Sequential(
             Rearrange('b (h w) c -> b c h w', h=image_height // patch_height),
             nn.ConvTranspose2d(dim, channels, kernel_size=patch_size, stride=patch_size)
@@ -207,9 +209,9 @@ class ViTDecoder(nn.Module):
     def forward(self, token: torch.FloatTensor) -> torch.FloatTensor:
         token += self.de_pos_embedding
         x = self.transformer(token)
-        x = self.norm(x)
+        x = self.to_pixel(x)
 
-        return self.to_pixel(x)
+        return x
 
     def get_last_layer(self) -> nn.Parameter:
         return self.to_pixel[-1].weight
