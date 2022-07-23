@@ -57,7 +57,7 @@ class VQLPIPS(nn.Module):
 
 
 class VQLPIPSWithDiscriminator(nn.Module):
-    def __init__(self, disc_start: int,
+    def __init__(self, disc_start: int = 0,
                  disc_loss: str = 'hinge',
                  disc_params: Optional[OmegaConf] = dict(),
                  codebook_weight: float = 1.0,
@@ -65,7 +65,7 @@ class VQLPIPSWithDiscriminator(nn.Module):
                  loggaussian_weight: float = 1.0,
                  perceptual_weight: float = 1.0,
                  adversarial_weight: float = 1.0,
-                 use_adaptive_adv: bool = True,
+                 use_adaptive_adv: bool = False,
                  r1_gamma: float = 10,
                  do_r1_every: int = 16) -> None:
         
