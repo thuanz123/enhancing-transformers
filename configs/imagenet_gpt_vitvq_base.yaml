@@ -8,52 +8,45 @@ model:
                 image_size: 256
                 class_name: ["church_outdoor"]
         stage1:
-            target: enhancing.modules.stage1.vitvqgan.ViTVQGumbel
+            target: enhancing.modules.stage1.vitvqgan.ViTVQ
             params:
                 image_key: image
                 hparams:
                     image_size: 256
-                    patch_size: 16
+                    patch_size: 8
                     dim: 768
                     depth: 12
                     heads: 12
                     mlp_dim: 3072
                 qparams:
-                    embed_dim: 256
-                    n_embed: 16384
-                    use_residual: True
-                    num_quantizers: 4
+                    embed_dim: 32
+                    n_embed: 8192
                 loss:
                     target: enhancing.losses.vqperceptual.DummyLoss
         transformer:
-            target: enhancing.modules.stage2.layers.RQTransformer
+            target: enhancing.modules.stage2.layers.GPT
             params:
-                vocab_cond_size: 1
-                vocab_img_size: 16384
+                vocab_cond_size: 1000
+                vocab_img_size: 8192
                 embed_dim: 6144
                 cond_num_tokens: 1
-                img_num_tokens: 256 
-                depth_num_tokens: 4 
-                spatial_n_heads: 16
-                spatial_n_layers: 24
-                depth_n_heads: 16
-                depth_n_layers: 4
-
+                img_num_tokens: 1024 
+                n_heads: 16
+                n_layers: 24
+                
 dataset:
     target: enhancing.dataloader.DataModuleFromConfig
     params:
         batch_size: 4
         num_workers: 2
         train:
-            target: enhancing.dataloader.lsun.LSUNTrain
+            target: enhancing.dataloader.imagenet.ImageNetTrain
             params:
-                root: data
-                classes: church_outdoor
+                root: data/ilsvrc2012
                 resolution: 256
                 
         validation:
-            target: enhancing.dataloader.lsun.LSUNValidation
+            target: enhancing.dataloader.imagenet.ImageNetValidation
             params:
-                root: data
-                classes: church_outdoor
+                root: data/ilsvrc2012
                 resolution: 256
