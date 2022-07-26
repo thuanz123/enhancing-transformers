@@ -2,7 +2,6 @@ model:
     target: enhancing.modules.stage1.vitvqgan.ViTVQ
     params:
         image_key: image
-        path: /fsx/thuna/enhancing-transformers/experiments/imagenet_vitvq_base/21072022_064447/ckpt/imagenet_vitvq_base-epoch=08.ckpt
         hparams:
             image_size: 256
             patch_size: 8
