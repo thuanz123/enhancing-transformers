@@ -58,7 +58,7 @@ class VQLPIPS(nn.Module):
 
 class VQLPIPSWithDiscriminator(nn.Module):
     def __init__(self, disc_start: int = 0,
-                 disc_loss: str = 'hinge',
+                 disc_loss: str = 'vanilla',
                  disc_params: Optional[OmegaConf] = dict(),
                  codebook_weight: float = 1.0,
                  loglaplace_weight: float = 1.0,

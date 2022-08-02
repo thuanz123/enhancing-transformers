@@ -27,8 +27,8 @@ def hinge_d_loss(logits_fake: torch.FloatTensor, logits_real: Optional[torch.Flo
 
 
 def vanilla_d_loss(logits_fake: torch.FloatTensor, logits_real: Optional[torch.FloatTensor] = None) -> torch.FloatTensor:
-    loss_fake = - logits_fake.sigmoid().log().mean() * 2 if logits_real is None else - (1 - logits_fake.sigmoid()).log().mean() 
-    loss_real = 0 if logits_real is None else - logits_real.sigmoid().log().mean()
+    loss_fake = F.softplus(-logits_fake).mean() * 2 if logits_real is None else F.softplus(logits_fake).mean()
+    loss_real = 0 if logits_real is None else F.softplus(-logits_real).mean()
     
     return 0.5 * (loss_real + loss_fake)
 
