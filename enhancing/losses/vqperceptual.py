@@ -155,10 +155,10 @@ class VQLPIPSWithDiscriminator(nn.Module):
             
             d_loss = disc_factor * self.disc_loss(logits_fake, logits_real)
             if do_r1:
-                gradients, = torch.autograd.grad(outputs=logits_real.sum(), inputs=inputs, create_graph=True)
-                gradients = gradients.view(inputs.shape[0], -1)
+                with conv2d_gradfix.no_weight_gradients():
+                    gradients, = torch.autograd.grad(outputs=logits_real.sum(), inputs=inputs, create_graph=True)
 
-                gradients_norm = gradients.norm(2, dim=1).pow(2).mean()
+                gradients_norm = gradients.square().sum([1,2,3]).mean()
                 d_loss += self.r1_gamma * self.do_r1_every * gradients_norm/2
 
             log = {"{}/disc_loss".format(split): d_loss.detach(),
