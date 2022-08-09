@@ -21,9 +21,9 @@ from torch.cuda.amp import autocast
 
 
 class MultiHeadSelfAttention(nn.Module):
-
     def __init__(self,
                  ctx_len: int,
+                 cond_len: int,
                  embed_dim: int,
                  n_heads: int,
                  attn_bias: bool,
@@ -45,6 +45,7 @@ class MultiHeadSelfAttention(nn.Module):
         if self.use_mask:
             self.register_buffer("mask", torch.ones(ctx_len, ctx_len), persistent=False)
             self.mask = torch.tril(self.mask).view(1, ctx_len, ctx_len)
+            self.mask[:, :cond_len, :cond_len] = 1
 
     def forward(self, x, use_cache=False, layer_past=None):
         B, T, C = x.shape
@@ -88,9 +89,9 @@ class MultiHeadSelfAttention(nn.Module):
 
 
 class Block(nn.Module):
-
     def __init__(self,
                  ctx_len: int,
+                 cond_len: int,
                  embed_dim: int,
                  n_heads: int,
                  mlp_bias: bool,
@@ -100,6 +101,7 @@ class Block(nn.Module):
         self.ln2 = nn.LayerNorm(embed_dim)
 
         self.attn = MultiHeadSelfAttention(ctx_len=ctx_len,
+                                           cond_len=cond_len,
                                            embed_dim=embed_dim,
                                            n_heads=n_heads,
                                            attn_bias=attn_bias,
@@ -149,6 +151,7 @@ class GPT(nn.Module):
 
         # transformer blocks
         self.blocks = [Block(ctx_len=cond_num_tokens + img_num_tokens,
+                             cond_len=cond_num_tokens,
                              embed_dim=embed_dim,
                              n_heads=n_heads,
                              mlp_bias=mlp_bias,
@@ -315,6 +318,7 @@ class RQTransformer(nn.Module):
 
         # spatial transformer
         self.spatial_transformer = [Block(ctx_len=cond_num_tokens + img_num_tokens,
+                                          cond_len=cond_num_tokens,
                                           embed_dim=embed_dim,
                                           n_heads=spatial_n_heads,
                                           mlp_bias=mlp_bias,
@@ -323,6 +327,7 @@ class RQTransformer(nn.Module):
 
         # depth transformer
         self.depth_transformer = [Block(ctx_len=depth_num_tokens,
+                                        cond_len=0,
                                         embed_dim=embed_dim,
                                         n_heads=depth_n_heads,
                                         mlp_bias=mlp_bias,
