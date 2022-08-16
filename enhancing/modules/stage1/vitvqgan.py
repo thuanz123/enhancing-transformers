@@ -23,8 +23,8 @@ from ...utils.general import initialize_from_config
 
 
 class ViTVQ(pl.LightningModule):
-    def __init__(self, image_key: str, hparams: OmegaConf, qparams: OmegaConf, loss: OmegaConf,
-                 path: Optional[str] = None, ignore_keys: List[str] = list(), scheduler: Optional[OmegaConf] = None) -> None:
+    def __init__(self, image_key: str, image_size: int, patch_size: int, encoder: OmegaConf, decoder: OmegaConf, quantizer: OmegaConf,
+                 loss: OmegaConf, path: Optional[str] = None, ignore_keys: List[str] = list(), scheduler: Optional[OmegaConf] = None) -> None:
         super().__init__()
         self.path = path
         self.ignore_keys = ignore_keys 
@@ -32,11 +32,11 @@ class ViTVQ(pl.LightningModule):
         self.scheduler = scheduler 
         
         self.loss = initialize_from_config(loss)
-        self.encoder = Encoder(**hparams)
-        self.decoder = Decoder(**hparams)
-        self.quantizer = VectorQuantizer(**qparams)
-        self.pre_quant = nn.Linear(hparams.dim, qparams.embed_dim)
-        self.post_quant = nn.Linear(qparams.embed_dim, hparams.dim)
+        self.encoder = Encoder(image_size=image_size, patch_size=patch_size, **encoder)
+        self.decoder = Decoder(image_size=image_size, patch_size=patch_size, **decoder)
+        self.quantizer = VectorQuantizer(**quantizer)
+        self.pre_quant = nn.Linear(encoder.dim, quantizer.embed_dim)
+        self.post_quant = nn.Linear(quantizer.embed_dim, decoder.dim)
 
         if path is not None:
             self.init_from_ckpt(path, ignore_keys)
@@ -189,14 +189,13 @@ class ViTVQ(pl.LightningModule):
 
 
 class ViTVQGumbel(ViTVQ):
-    def __init__(self, image_key: str, hparams: OmegaConf, qparams: OmegaConf, loss: OmegaConf,
-                 path: Optional[str] = None, ignore_keys: List[str] = list(),
-                 temperature_scheduler: OmegaConf = None, scheduler: Optional[OmegaConf] = None) -> None:
-        super().__init__(image_key, hparams, qparams, loss, None, None)
+    def __init__(self, image_key: str, image_size: int, patch_size: int, encoder: OmegaConf, decoder: OmegaConf, quantizer: OmegaConf, loss: OmegaConf,
+                 path: Optional[str] = None, ignore_keys: List[str] = list(), temperature_scheduler: OmegaConf = None, scheduler: Optional[OmegaConf] = None) -> None:
+        super().__init__(image_key, image_size, patch_size, encoder, decoder, quantizer, loss, None, None, scheduler)
 
         self.temperature_scheduler = initialize_from_config(temperature_scheduler) \
                                      if temperature_scheduler else None
-        self.quantizer = GumbelQuantizer(**qparams)
+        self.quantizer = GumbelQuantizer(**quantizer)
 
         if path is not None:
             self.init_from_ckpt(path, ignore_keys)

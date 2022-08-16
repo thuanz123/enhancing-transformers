@@ -6,20 +6,25 @@ model:
             target: enhancing.modules.cond.dummycond.ClassCond
             params:
                 image_size: 256
-                class_name: ["church_outdoor"]
+                class_name: assets/class/imagenet.txt
         stage1:
             target: enhancing.modules.stage1.vitvqgan.ViTVQ
             params:
                 image_key: image
-                path: weight/imagenet_vitvq_base8.ckpt
-                hparams:
-                    image_size: 256
-                    patch_size: 8
+                path: weight/imagenet_vitvq_base.ckpt
+                image_size: 256
+                patch_size: 8
+                encoder:
                     dim: 768
                     depth: 12
                     heads: 12
                     mlp_dim: 3072
-                qparams:
+                decoder:
+                    dim: 768
+                    depth: 12
+                    heads: 12
+                    mlp_dim: 3072
+                quantizer:
                     embed_dim: 32
                     n_embed: 8192
                 loss:

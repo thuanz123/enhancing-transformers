@@ -2,14 +2,19 @@ model:
     target: enhancing.modules.stage1.vitvqgan.ViTVQ
     params:
         image_key: image
-        hparams:
-            image_size: 256
-            patch_size: 8
+        image_size: 256
+        patch_size: 8
+        encoder:
             dim: 768
             depth: 12
             heads: 12
             mlp_dim: 3072
-        qparams:
+        decoder:
+            dim: 768
+            depth: 12
+            heads: 12
+            mlp_dim: 3072
+        quantizer:
             embed_dim: 32
             n_embed: 8192
         loss:
