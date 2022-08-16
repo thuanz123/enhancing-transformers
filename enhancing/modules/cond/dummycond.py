@@ -4,6 +4,7 @@
 # Licensed under the MIT License [see LICENSE for details]
 # ------------------------------------------------------------------------------------
 
+import os
 from omegaconf import OmegaConf
 from typing import Tuple, Union, List, Any
 
@@ -69,11 +70,19 @@ class TextCond(DummyCond):
 
 
 class ClassCond(DummyCond):
-    def __init__(self, image_size: Union[Tuple[int, int], int], class_name: List[str]) -> None:
+    def __init__(self, image_size: Union[Tuple[int, int], int], class_name: Union[str, List[str]]) -> None:
         super().__init__()
         self.img_size = image_size
-        self.cls_name = class_name
-
+        if isinstance(class_name, str):
+            if class_name.endswith("txt") and os.path.isfile(class_name):
+                self.cls_name = open(class_name, "r").read().split("\n")
+            elif "." not in class_name and not os.path.isfile(class_name):
+                self.cls_name = class_name
+        elif isinstance(class_name, list) and isinstance(class_name[0], str):
+            self.cls_name = class_name
+        else:
+            raise Exception("Class file format not supported")
+            
     def to_img(self, clss: torch.LongTensor) -> torch.FloatTensor:
         W, H = self.img_size if isinstance(self.img_size, tuple) else (self.img_size, self.img_size)
         font = ImageFont.truetype("arial.ttf", 12)
