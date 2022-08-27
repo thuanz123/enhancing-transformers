@@ -75,28 +75,23 @@ class CondTransformer(pl.LightningModule):
         self.load_state_dict(sd, strict=False)
         print(f"Restored from {path}")
 
+    @torch.no_grad()
     def sample(self,
                conds: torch.LongTensor,
                top_k: Optional[float] = None,
                top_p: Optional[float] = None,
                softmax_temperature: float = 1.0,
-               use_fp16: bool = True,
-               return_pixels: bool = False) -> Union[torch.FloatTensor, Tuple[torch.FloatTensor, torch.LongTensor]]:
+               use_fp16: bool = True) -> torch.FloatTensor:
 
         conds = conds.view(conds.shape[0], -1)
         logits, codes = self.transformer.sample(conds=conds, top_k=top_k, top_p=top_p,
                                                 softmax_temperature=softmax_temperature,
                                                 use_fp16=use_fp16)
 
-        if return_pixels:
-            if self.code_shape is not None:
-                codes = codes.view(codes.shape[0], *self.code_shape)
-                
-            return self.stage1_model.decode_codes(codes).clamp(0, 1)
-        else:
-            codes = codes.view(-1, codes.shape[-1])
-            
-            return logits, codes
+        codes = codes.view(codes.shape[0], *self.code_shape)
+        pixels = self.stage1_model.decode_codes(codes).clamp(0, 1)
+                            
+        return pixels
 
     def get_input(self, batch: Tuple[Any, Any], key: str) -> torch.FloatTensor:
         x = batch[key]
@@ -111,11 +106,12 @@ class CondTransformer(pl.LightningModule):
     def shared_step(self, batch: Tuple[Any, Any], batch_idx: int) -> torch.FloatTensor:
         images = self.get_input(batch, self.stage1_model.image_key)
         conds = self.get_input(batch, self.cond_key)
-
-        codes = self.stage1_model.encode_codes(images).detach()
-        conds = self.cond_model.encode_codes(conds).detach()
         
-        logits, codes = self(codes, conds) # if torch.bernoulli(self.sample_prob) else self.sampling(conds) # scheduled sampling
+        with torch.no_grad():
+            codes = self.stage1_model.encode_codes(images).detach()
+            conds = self.cond_model.encode_codes(conds).detach()
+        
+        logits, codes = self(codes, conds)
         loss = F.cross_entropy(logits.view(-1, logits.shape[-1]), codes.view(-1))
 
         return loss
@@ -157,6 +153,8 @@ class CondTransformer(pl.LightningModule):
                     decay.add(fpn)
                 elif pn.endswith('weight') and isinstance(m, blacklist_weight_modules):
                     # weights of blacklist modules will NOT be weight decayed
+                    no_decay.add(fpn)
+                elif 'time_' in pn: # for RWKV
                     no_decay.add(fpn)
 
         # special case the position embedding parameter in the root GPT module as not decayed
@@ -201,7 +199,7 @@ class CondTransformer(pl.LightningModule):
         cond_codes = self.cond_model.encode_codes(conds).detach()
         
         log["conditions"] = self.cond_model.to_img(conds)
-        log["first samples"] = self.sample(cond_codes, return_pixels=True)
-        log["second samples"] = self.sample(cond_codes, return_pixels=True)
+        log["first samples"] = self.sample(cond_codes)
+        log["second samples"] = self.sample(cond_codes)
         
         return log

@@ -288,7 +288,7 @@ class GPT(nn.Module):
             else:
                 assert past is not None
                 codes = self.tok_emb_code(codes)
-                x = codes + self.pos_emb_code
+                x = codes + pos_code
                 
                 past = torch.cat(past, dim=-2)
                 for i, block in enumerate(self.blocks):
