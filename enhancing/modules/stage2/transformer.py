@@ -88,7 +88,8 @@ class CondTransformer(pl.LightningModule):
                                                 softmax_temperature=softmax_temperature,
                                                 use_fp16=use_fp16)
 
-        codes = codes.view(codes.shape[0], *self.code_shape)
+        if self.code_shape is not None:
+            codes = codes.view(codes.shape[0], *self.code_shape)
         pixels = self.stage1_model.decode_codes(codes).clamp(0, 1)
                             
         return pixels
