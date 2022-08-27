@@ -95,7 +95,7 @@ class ClassCond(DummyCond):
             img = Image.new("RGBA", (W, H), "white")
             draw = ImageDraw.Draw(img)
             
-            w, h = draw.textbox(cls_name, font)
+            w, h = draw.textsize(cls_name, font)
             draw.text(((W-w)/2,(H-h)/2), cls_name, font=font, fill="black", align="center")
 
             img = img.convert('RGB')
