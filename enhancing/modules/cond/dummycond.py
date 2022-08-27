@@ -41,7 +41,7 @@ class TextCond(DummyCond):
 
     def to_img(self, texts: torch.LongTensor) -> torch.FloatTensor:
         W, H = self.image_size if isinstance(self.image_size, tuple) else (self.image_size, self.image_size)
-        font = ImageFont.truetype("arial.ttf", 12)
+        font = ImageFont.truetype(os.path.join(os.getcwd(), "assets", "font", "arial.ttf"), 12)
         
         imgs = []
         for text in texts:
@@ -85,7 +85,7 @@ class ClassCond(DummyCond):
             
     def to_img(self, clss: torch.LongTensor) -> torch.FloatTensor:
         W, H = self.img_size if isinstance(self.img_size, tuple) else (self.img_size, self.img_size)
-        font = ImageFont.truetype("arial.ttf", 12)
+        font = ImageFont.truetype(os.path.join(os.getcwd(), "assets", "font", "arial.ttf"), 12)
         
         imgs = []
         for cls in clss:
