@@ -47,8 +47,17 @@ class MultiHeadSelfAttention(nn.Module):
             self.mask = torch.tril(self.mask).view(1, ctx_len, ctx_len)
             self.mask[:, :cond_len, :cond_len] = 1
 
+        self.time_shift = nn.ZeroPad2d((0, 0, 31, -31))
+        with torch.no_grad():
+            ww = torch.zeros(1, 1, embed_dim)
+            for i in range(embed_dim):
+                ww[0, 0, i] = i / (embed_dim - 1)
+        self.time_mix = nn.Parameter(ww)
+
     def forward(self, x, use_cache=False, layer_past=None):
         B, T, C = x.shape
+
+        x = x * self.time_mix + self.time_shift(x) * (1 - self.time_mix)
         x = x.transpose(0, 1).contiguous()  # (B, T, C) -> (T, B, C)
 
         # calculate query, key, values for all heads in batch and move head forward to be the batch dim
@@ -87,6 +96,18 @@ class MultiHeadSelfAttention(nn.Module):
         else:
             return y.transpose(0, 1).contiguous()  # (T, B, C) -> (B, T, C)
 
+class FFN(nn.Module):
+    def __init__(self, embed_dim, mlp_bias):
+        super().__init__()
+        self.p0 = nn.Linear(embed_dim, 4 * embed_dim, bias=mlp_bias)
+        self.p1 = nn.Linear(4 * embed_dim, embed_dim, bias=mlp_bias)
+
+    def forward(self, x):
+        x = self.p0(x)
+        # x = F.gelu(x)
+        x = torch.square(torch.relu(x))
+        x = self.p1(x)
+        return x
 
 class Block(nn.Module):
     def __init__(self,
@@ -106,11 +127,7 @@ class Block(nn.Module):
                                            n_heads=n_heads,
                                            attn_bias=attn_bias,
                                            use_mask=True)
-        self.mlp = nn.Sequential(
-            nn.Linear(embed_dim, 4 * embed_dim, bias=mlp_bias),
-            nn.GELU(),
-            nn.Linear(4 * embed_dim, embed_dim, bias=mlp_bias),
-        )
+        self.mlp = FFN(embed_dim=embed_dim, mlp_bias=mlp_bias)
 
     def forward(self, x):
         x = x + self.attn(self.ln1(x))
