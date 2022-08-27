@@ -47,7 +47,7 @@ class MultiHeadSelfAttention(nn.Module):
             self.mask = torch.tril(self.mask).view(1, ctx_len, ctx_len)
             self.mask[:, :cond_len, :cond_len] = 1
 
-        self.time_shift = nn.ZeroPad2d((0, 0, 31, -31))
+        self.time_shift = nn.ZeroPad2d((0, 0, 1, -1))
         with torch.no_grad():
             ww = torch.zeros(1, 1, embed_dim)
             for i in range(embed_dim):
