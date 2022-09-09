@@ -75,7 +75,7 @@ Training is easy with one line:
         - [x] Add COCO Caption
     - [x] CC3M
 - [ ] Add pretrained models
-    - [ ] ViT-VQGAN small
+    - [x] ViT-VQGAN small
     - [x] ViT-VQGAN base
     - [ ] ViT-VQGAN large
 
