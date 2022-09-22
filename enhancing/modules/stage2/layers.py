@@ -226,7 +226,7 @@ class GPT(nn.Module):
             else:
                 codes_ = codes.clone().detach()
                 codes_ = codes_[:, -1:]
-                pos_code = self.pos_emb_code[:, i:i+1, :]
+                pos_code = self.pos_emb_code[:, i-1:i, :]
                 
             logits_, presents = self.sample_step(codes_, conds, pos_code, use_fp16, past)
             
@@ -248,7 +248,7 @@ class GPT(nn.Module):
                 sorted_probs, sorted_indices = torch.sort(probs, dim=-1, descending=True)
                 cum_probs = torch.cumsum(sorted_probs, dim=-1)
 
-                sorted_idx_remove_cond = cum_probs >= p
+                sorted_idx_remove_cond = cum_probs >= top_p
 
                 sorted_idx_remove_cond[..., 1:] = sorted_idx_remove_cond[..., :-1].clone()
                 sorted_idx_remove_cond[..., 0] = 0
@@ -292,7 +292,7 @@ class GPT(nn.Module):
                 
                 past = torch.cat(past, dim=-2)
                 for i, block in enumerate(self.blocks):
-                    x, present = block.sample(x, layer_past= past[i])
+                    x, present = block.sample(x, layer_past=past[i])
                     presents.append(present)
 
                 x = self.layer_norm(x)
@@ -413,7 +413,7 @@ class RQTransformer(nn.Module):
             else:
                 codes_ = codes.clone().detach()
                 codes_ = codes_[:, -self.depth_num_tokens:]
-                pos_code = self.pos_emb_code[:, i:i+1, :]
+                pos_code = self.pos_emb_code[:, i-1:i, :]
                 
             hidden, presents = self.sample_spatial_step(codes_, conds, pos_code, use_fp16, past)
 
@@ -454,7 +454,7 @@ class RQTransformer(nn.Module):
                     sorted_probs, sorted_indices = torch.sort(probs, dim=-1, descending=True)
                     cum_probs = torch.cumsum(sorted_probs, dim=-1)
 
-                    sorted_idx_remove_cond = cum_probs >= p
+                    sorted_idx_remove_cond = cum_probs >= top_p
 
                     sorted_idx_remove_cond[..., 1:] = sorted_idx_remove_cond[..., :-1].clone()
                     sorted_idx_remove_cond[..., 0] = 0
@@ -501,9 +501,9 @@ class RQTransformer(nn.Module):
                 codes = self.tok_emb_code(codes)
                 x = codes.sum(1, keepdim=True) + pos_code
                 
-                past = torch.cat(past, dim=-2) if past is not None else past
+                past = torch.cat(past, dim=-2)
                 for i, block in enumerate(self.spatial_transformer):
-                    x, present = block.sample(x, layer_past=None if past is None else past[i])
+                    x, present = block.sample(x, layer_past=past[i])
                     presents.append(present)
 
                 x = self.ln_spatial(x)
