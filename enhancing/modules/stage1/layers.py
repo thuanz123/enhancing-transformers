@@ -176,7 +176,7 @@ class ViTEncoder(nn.Module):
 
     def forward(self, img: torch.FloatTensor) -> torch.FloatTensor:
         x = self.to_patch_embedding(img)
-        x += self.en_pos_embedding
+        x = x + self.en_pos_embedding
         x = self.transformer(x)
 
         return x
@@ -207,7 +207,7 @@ class ViTDecoder(nn.Module):
         self.apply(init_weights)
 
     def forward(self, token: torch.FloatTensor) -> torch.FloatTensor:
-        token += self.de_pos_embedding
+        x = token + self.de_pos_embedding
         x = self.transformer(token)
         x = self.to_pixel(x)
 
