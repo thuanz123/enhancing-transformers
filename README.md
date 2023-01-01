@@ -108,7 +108,7 @@ Thuan H. Nguyen - [@leejohnthuan](https://twitter.com/leejohnthuan) - leejohnthu
 
 
 <!-- ACKNOWLEDGMENTS -->
-## Acknowledgments
+## Acknowledegments
 This project would not be possible without the generous sponsorship from [Stability AI](https://stability.ai/) and helpful discussion of folks in [LAION discord](https://discord.gg/j5GdN49g)
 
 This repo is heavily inspired by following repos and papers:
