@@ -107,8 +107,8 @@ Distributed under the MIT License. See `LICENSE` for more information.
 Thuan H. Nguyen - [@leejohnthuan](https://twitter.com/leejohnthuan) - leejohnthuan@gmail.com
 
 
-<!-- ACKNOWLEDGMENTS -->
-## Acknowledegments
+<!-- ACKNOWLEDGEMENTS -->
+## Acknowledgements
 This project would not be possible without the generous sponsorship from [Stability AI](https://stability.ai/) and helpful discussion of folks in [LAION discord](https://discord.gg/j5GdN49g)
 
 This repo is heavily inspired by following repos and papers:
