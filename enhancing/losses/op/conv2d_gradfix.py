@@ -133,6 +133,7 @@ def conv2d_gradfix(
 
     class Conv2d(autograd.Function):
         @staticmethod
+        @torch.cuda.amp.custom_fwd(cast_inputs=torch.float16)
         def forward(ctx, input, weight, bias):
             if not transpose:
                 out = F.conv2d(input=input, weight=weight, bias=bias, **common_kwargs)

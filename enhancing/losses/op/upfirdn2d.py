@@ -88,6 +88,7 @@ class UpFirDn2dBackward(Function):
 
 class UpFirDn2d(Function):
     @staticmethod
+    @torch.cuda.amp.custom_fwd(cast_inputs=torch.float16)
     def forward(ctx, input, kernel, up, down, pad):
         up_x, up_y = up
         down_x, down_y = down
