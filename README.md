@@ -98,7 +98,7 @@ Don't forget to give the project a star! Thanks again!
 <!-- LICENSE -->
 ## License
 
-Source code and all weights are distributed under the MIT License. See `LICENSE` for more information.
+Source code and pretrained weights are distributed under the MIT License. See `LICENSE` for more information.
 
 
 <!-- CONTACT -->
