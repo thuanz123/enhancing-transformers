@@ -26,10 +26,10 @@
 
 ## News
 ***09/09***
-1. The release weight of ViT-VQGAN small which is trained on ImageNet at [here](https://drive.google.com/file/d/1jbjD4q0iJpXrRMVSYJRIvM_94AxA1EqJ/view?usp=sharing)
+1. The release weight of ViT-VQGAN small which is trained on ImageNet at [here](https://huggingface.co/thuanz123/vitvqgan-imagenet-small)
 
 ***16/08***
-1. First release weight of ViT-VQGAN base which is trained on ImageNet at [here](https://drive.google.com/file/d/1syv0t3nAJ-bETFgFpztw9cPXghanUaM6/view?usp=sharing)
+1. First release weight of ViT-VQGAN base which is trained on ImageNet at [here](https://huggingface.co/thuanz123/vitvqgan-imagenet-base)
 2. Add an colab notebook at [here](https://colab.research.google.com/drive/1y-PzYhkNQbhKj3i459pWd6TAO28SnF5h?usp=sharing)
 
 <!-- ABOUT THE PROJECT -->
